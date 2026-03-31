@@ -17,7 +17,8 @@ dependencies = [
     "pytest (>=9.0.2,<10.0.0)",
     "pymysql[rsa] (>=1.1.2,<2.0.0)",
     "aiomysql (>=0.3.2,<0.4.0)",
-    "marshmallow-sqlalchemy (>=1.4.2,<2.0.0)"
+    "marshmallow-sqlalchemy (>=1.4.2,<2.0.0)",
+    "argon2-cffi (>=25.1.0,<26.0.0)"
 ]
 
 

@@ -46,7 +46,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(96), nullable=False) # see https://stackoverflow.com/questions/247304/what-data-type-to-use-for-hashed-password-field-and-what-length
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False) # see https://stackoverflow.com/questions/247304/what-data-type-to-use-for-hashed-password-field-and-what-length
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False, default=UserRole.STANDARD) # see https://docs.sqlalchemy.org/en/21/orm/declarative_tables.html#using-python-enum-or-pep-586-literal-types-in-the-type-map
     verified: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
