@@ -1,13 +1,12 @@
-from abc import ABC
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, Result
 from datetime import timedelta
 from sahara_shield.app.model.orm import User, AuthSession
 from sahara_shield.app.core.security import password_sec_measure
 
-class Service(ABC):
+class Service():
     '''
-    Abstract base class for asynchronous service (layer) classes. Intended for use with an asynchronous DBAPI.
+    Base class for asynchronous service (layer) classes. Intended for use with an asynchronous DBAPI.
 
     Services interact with the database and domain objects.
     They effectively encapsulate the bulk of the system's business logic.

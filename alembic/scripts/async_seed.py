@@ -5,7 +5,7 @@ Commandline script to insert seed data (fake data) into the Sahara Shop database
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import insert, text
-from sahara_shield.app.core.seed_data import generate_seed_users
+from sahara_shield.app.seed_data import generate_seed_users
 from sahara_shield.app.model.marshal import UserSchema
 from sahara_shield.app.core.config import app_settings
 from sahara_shield.app.model.orm import User
