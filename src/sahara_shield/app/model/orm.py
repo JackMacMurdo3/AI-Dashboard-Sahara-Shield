@@ -7,8 +7,8 @@ This module defines the SQLAlchemy mapped classes which are used for persisting 
 import uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Mapper
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy import Integer, String, Enum, DateTime, Float, CheckConstraint, ForeignKey, Boolean
-from sahara_shield.app.model.enums import UserRole
+from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Boolean
+from sahara_shield.app.model.enums import UserRoles, EvidenceThreatTypes, EvidenceSeverities
 from datetime import datetime, timezone
 from sqlalchemy.inspection import inspect
 from sqlalchemy import event
@@ -28,9 +28,7 @@ event.listen(Mapper, 'init', set_default_values)
 
 class Base(DeclarativeBase, AsyncAttrs):
     '''
-    Base mapped class. 
-    
-    All subsequent mapped classes should be derived from this one.
+    Base mapped class. All subsequent mapped classes should be derived from this one.
     This way, they will automatically be added to the database metadata and can therefore be handled by Alembic for migrations.
     '''
     
@@ -47,18 +45,16 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False) # see https://stackoverflow.com/questions/247304/what-data-type-to-use-for-hashed-password-field-and-what-length
-    role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False, default=UserRole.STANDARD) # see https://docs.sqlalchemy.org/en/21/orm/declarative_tables.html#using-python-enum-or-pep-586-literal-types-in-the-type-map
+    role: Mapped[UserRoles] = mapped_column(Enum(UserRoles), nullable=False, default=UserRoles.STANDARD) # see https://docs.sqlalchemy.org/en/21/orm/declarative_tables.html#using-python-enum-or-pep-586-literal-types-in-the-type-map
     verified: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
 
 class AuthSession(Base):
     '''
-    Represents an authenticated session for a user.
-
-    Temporary - automatically expire after a set period of time, after which user is no longer authenticated.
-
-    Server is responsible for revocation.
+    Represents an authentication session for a user.
+     - Temporary - automatically expire after a set period of time, after which user is no longer authenticated.
+     - Server is responsible for revocation.
 
     See https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
     '''
@@ -73,9 +69,38 @@ class AuthSession(Base):
 
     def is_expired(self) -> bool:
         '''
-        Checks whether authenticated session for user has expired based on current time.
+        Checks whether authentication session for user has expired based on current time.
         '''
         return self.expires_at < datetime.now(tz=self.expires_at.tzinfo) # see https://stackoverflow.com/questions/15307623/cant-compare-naive-and-aware-datetime-now-challenge-datetime-end
+    
+class Scan(Base):
+    '''
+    Represents a security scan of code files in a remote repository by agent, initiated at request of user
+    '''
+
+    __tablename__ = 'scans'
+
+    id: Mapped[str] = mapped_column(String(length=96), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    repository_url: Mapped[str] = mapped_column(String(255), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+
+class Evidence(Base):
+    '''
+    Represents security vulnerabilities found in a file of a remote repository scanned by agent.
+    '''
+
+    __tablename__ = 'evidence'
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True)
+    scan_id: Mapped[int] = mapped_column(ForeignKey('scans.id'))
+    filename: Mapped[str] = mapped_column(String(length=255), nullable=False)
+    threat_type: Mapped[EvidenceThreatTypes] = mapped_column(Enum(EvidenceThreatTypes), nullable=False, default=EvidenceThreatTypes.NONE)
+    confidence_level: Mapped[int] = mapped_column(Integer(), nullable=False, default=0)
+    severity: Mapped[EvidenceSeverities] = mapped_column(Enum(EvidenceSeverities), nullable=False, default=EvidenceSeverities.NONE)
     
 # we need this so alembic can understand the schema of our database when performing migrations
 # see https://docs.sqlalchemy.org/en/20/tutorial/metadata.html

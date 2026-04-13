@@ -1,10 +1,267 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Malware Detection Dashboard</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
 
-    </head>
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    MALWARE DETECTION AI
+  </div>
+  <div class="status-bar">
+    <div>UPTIME <span>14h 32m</span></div>
+    <div>STATUS <span id="system-status">IDLE</span></div>
+    <div>ENV <span>PRODUCTION</span></div>
+  </div>
+</header>
 
-    <body>
-        
-    </body>
+<!-- Stats -->
+<div class="stats">
+  <div class="stat-card">
+    <div class="stat-label">Files Scanned</div>
+    <div class="stat-value" id="stat-scanned">2,847</div>
+    <div class="stat-sub">all time</div>
+  </div>
+  <div class="stat-card stat-card--threat">
+    <div class="stat-label">Threats Detected</div>
+    <div class="stat-value threat" id="stat-threats">38</div>
+    <div class="stat-sub">all time</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Clean Files</div>
+    <div class="stat-value" id="stat-clean">2,809</div>
+    <div class="stat-sub">all time</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">False Positive Rate</div>
+    <div class="stat-value" id="stat-fpr">1.3%</div>
+    <div class="stat-sub">last 30 days</div>
+  </div>
+</div>
+
+<!-- Scan Pipeline -->
+<div class="pipeline-container">
+  <div class="section-title">Scan Pipeline</div>
+  <div class="pipeline-stages">
+
+    <div class="stage waiting" id="stage-ingest">
+      <div class="stage-icon">📁</div>
+      <div class="stage-label">File Ingestion</div>
+      <div class="stage-status">Idle</div>
+      <div class="stage-time">—</div>
+    </div>
+
+    <div class="stage waiting" id="stage-static">
+      <div class="stage-icon">🔍</div>
+      <div class="stage-label">Static Analysis</div>
+      <div class="stage-status">Idle</div>
+      <div class="stage-time">—</div>
+    </div>
+
+    <div class="stage waiting" id="stage-inference">
+      <div class="stage-icon">🤖</div>
+      <div class="stage-label">AI Inference</div>
+      <div class="stage-status">Idle</div>
+      <div class="stage-time" id="inference-timer">—</div>
+    </div>
+
+    <div class="stage waiting" id="stage-classify">
+      <div class="stage-icon">🏷️</div>
+      <div class="stage-label">Classification</div>
+      <div class="stage-status">Idle</div>
+      <div class="stage-time">—</div>
+    </div>
+
+    <div class="stage waiting" id="stage-report">
+      <div class="stage-icon">📋</div>
+      <div class="stage-label">Report</div>
+      <div class="stage-status">Idle</div>
+      <div class="stage-time">—</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Middle grid -->
+<div class="middle-grid">
+
+  <!-- Active Scan + Button -->
+  <div class="card active-scan-card">
+    <div class="section-title">Active Scan</div>
+    <div class="active-scan-info" id="active-scan-info">
+      <div class="scan-idle-msg">No scan running</div>
+    </div>
+    <div class="scan-progress-wrap" id="scan-progress-wrap" hidden>
+      <div class="scan-progress-bar">
+        <div class="scan-progress-fill" id="scan-progress-fill"></div>
+      </div>
+      <div class="scan-progress-label" id="scan-progress-label">0%</div>
+    </div>
+    <button class="find-malware-btn" id="find-malware-btn">Find Malware</button>
+  </div>
+
+  <!-- Confidence gauge -->
+  <div class="card confidence-card">
+    <div class="section-title">AI Confidence</div>
+    <div class="gauge-wrap">
+      <svg class="gauge" viewBox="0 0 120 70">
+        <path class="gauge-track" d="M10,60 A50,50 0 0,1 110,60" />
+        <path class="gauge-fill" id="gauge-fill" d="M10,60 A50,50 0 0,1 110,60" stroke-dasharray="0 157" />
+        <text class="gauge-value" id="gauge-value" x="60" y="58">—</text>
+        <text class="gauge-sub" x="60" y="68">confidence</text>
+      </svg>
+    </div>
+    <div class="confidence-label" id="confidence-label">Run a scan to see results</div>
+  </div>
+
+  <!-- Threat Breakdown -->
+  <div class="card">
+    <div class="section-title">Threat Breakdown</div>
+    <div class="threat-breakdown" id="threat-breakdown">
+      <div class="breakdown-row">
+        <div class="breakdown-label">Ransomware</div>
+        <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:42%"></div></div>
+        <div class="breakdown-count">8</div>
+      </div>
+      <div class="breakdown-row">
+        <div class="breakdown-label">Backdoor</div>
+        <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:32%"></div></div>
+        <div class="breakdown-count">6</div>
+      </div>
+      <div class="breakdown-row">
+        <div class="breakdown-label">Trojan</div>
+        <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:26%"></div></div>
+        <div class="breakdown-count">5</div>
+      </div>
+      <div class="breakdown-row">
+        <div class="breakdown-label">Spyware</div>
+        <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:21%"></div></div>
+        <div class="breakdown-count">4</div>
+      </div>
+      <div class="breakdown-row">
+        <div class="breakdown-label">Obfuscated</div>
+        <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:79%"></div></div>
+        <div class="breakdown-count">15</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom grid -->
+<div class="bottom-grid">
+
+  <!-- Threat Results Table -->
+  <div class="card">
+    <div class="section-title">Threat Results</div>
+    <table class="threat-table">
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Threat Type</th>
+          <th>Confidence</th>
+          <th>Severity</th>
+        </tr>
+      </thead>
+      <tbody id="threat-table-body">
+        <tr>
+          <td class="file-name">loader.js</td>
+          <td>Backdoor</td>
+          <td>97%</td>
+          <td><span class="severity critical">Critical</span></td>
+        </tr>
+        <tr>
+          <td class="file-name">update_helper.exe</td>
+          <td>Trojan</td>
+          <td>91%</td>
+          <td><span class="severity high">High</span></td>
+        </tr>
+        <tr>
+          <td class="file-name">config_patch.py</td>
+          <td>Obfuscated</td>
+          <td>85%</td>
+          <td><span class="severity medium">Medium</span></td>
+        </tr>
+        <tr>
+          <td class="file-name">svc_monitor.dll</td>
+          <td>Spyware</td>
+          <td>78%</td>
+          <td><span class="severity medium">Medium</span></td>
+        </tr>
+        <tr>
+          <td class="file-name">install.sh</td>
+          <td>Ransomware</td>
+          <td>99%</td>
+          <td><span class="severity critical">Critical</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Recent Scans + Live Log -->
+  <div class="right-col">
+
+    <div class="card">
+      <div class="section-title">Recent Scans</div>
+      <table class="recent-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>File / Repo</th>
+            <th>Result</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody id="recent-table-body">
+          <tr>
+            <td class="muted">09:41:02</td>
+            <td>auth_module.py</td>
+            <td><span class="result clean">Clean</span></td>
+            <td class="muted">1.2s</td>
+          </tr>
+          <tr>
+            <td class="muted">09:38:17</td>
+            <td>loader.js</td>
+            <td><span class="result threat">Threat</span></td>
+            <td class="muted">2.1s</td>
+          </tr>
+          <tr>
+            <td class="muted">09:35:50</td>
+            <td>utils/hash.go</td>
+            <td><span class="result clean">Clean</span></td>
+            <td class="muted">0.9s</td>
+          </tr>
+          <tr>
+            <td class="muted">09:31:44</td>
+            <td>install.sh</td>
+            <td><span class="result threat">Threat</span></td>
+            <td class="muted">1.8s</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Live Log</div>
+      <div class="log-feed" id="log-feed">
+        <div class="log-line">
+          <span class="log-ts">09:41:02</span>
+          <span class="log-info">[INFO]</span>
+          <span class="log-msg">System ready. Awaiting scan job.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="/static/js/script.js"></script>
+</body>
 </html>
