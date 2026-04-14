@@ -11,8 +11,8 @@ auth_router = APIRouter(
 async def login(email:str, password:str, response:Response, user_auth_service:UserAuthServiceDep):
     try:
         user_id = await user_auth_service.authenticate(email, password)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=401, detail='Invalid email or password')
     
     auth_session = await user_auth_service.create_auth_session(user_id, app_settings.AUTH_COOKIE_MAX_AGE, persist=True)
     await user_auth_service.save_changes()

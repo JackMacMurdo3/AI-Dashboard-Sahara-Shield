@@ -1,6 +1,7 @@
 from fastapi import FastAPI, responses, staticfiles
 from sahara_shield.app.core.config import app_settings
 from sahara_shield.app.api.main import api_router
+from sahara_shield.app.api.deps import CurrentUserDep
 
 app = FastAPI()
 app.include_router(api_router, prefix=app_settings.API_STR_PREFIX)
@@ -14,9 +15,19 @@ app.mount(
 )
 
 @app.get('/', response_class=responses.FileResponse)
-def root():
+def root(user:CurrentUserDep):
     '''
-    API route to fetch landing page HTML
+    API route to fetch landing page HTML (aka the dashboard)
+
+    Protected route - user must be logged in to access
     '''
 
     return responses.FileResponse('./static/html/index.html')
+
+@app.get('/login', response_class=responses.FileResponse)
+def login_page():
+    '''
+    API route to fetch login page HTML
+    '''
+
+    return responses.FileResponse('./static/html/login.html')

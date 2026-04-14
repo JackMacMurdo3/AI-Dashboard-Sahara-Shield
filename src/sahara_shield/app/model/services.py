@@ -70,10 +70,10 @@ class UserAuthService(Service):
         res: Result = await self.db_session.execute(stmt)
 
         rows = res.mappings().all()
-        if rows is None:
+        if not rows:
             raise Exception(f'Cannot find user with email {email}')
         
-        found_user: User = rows[0]
+        found_user = rows[0]
         valid_password = password_sec_measure.verify_password(password, found_user.password_hash)
         if not valid_password:
             raise Exception('Incorrect password')
