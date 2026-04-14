@@ -5,9 +5,9 @@ This module defines the SQLAlchemy mapped classes which are used for persisting 
 '''
 
 import uuid
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Mapper
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Mapper, column_property
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Boolean
+from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Boolean, select, func
 from sahara_shield.app.model.enums import UserRoles, EvidenceThreatTypes, EvidenceSeverities
 from datetime import datetime, timezone
 from sqlalchemy.inspection import inspect
@@ -33,7 +33,9 @@ class Base(DeclarativeBase, AsyncAttrs):
     '''
     
     def __repr__(self):
-        return ', '.join([f'{field.name} = {getattr(self, field.name)}' for field in self.__table__.columns])
+        attrs = inspect(self.__class__).mapper.column_attrs
+        values = ', '.join(f'{attr.key} = {getattr(self, attr.key)}' for attr in attrs)
+        return f'{self.__class__.__name__}({values})'
 
 class User(Base):
     '''
@@ -87,6 +89,16 @@ class Scan(Base):
     finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+
+    @classmethod
+    def __declare_last__(cls):
+        # configure derived field after all mappers are ready so Evidence is defined w/o reordering
+        cls.evidence_count = column_property(
+            select(func.count(Evidence.id))
+            .where(Evidence.scan_id == cls.id)
+            .correlate_except(Evidence)
+            .scalar_subquery()
+        )
 
 class Evidence(Base):
     '''
