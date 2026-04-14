@@ -7,7 +7,7 @@ This module defines the SQLAlchemy mapped classes which are used for persisting 
 import uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Mapper, column_property
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Boolean, select, func
+from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Boolean, select, func, text
 from sahara_shield.app.model.enums import UserRoles, EvidenceThreatTypes, EvidenceSeverities
 from datetime import datetime, timezone
 from sqlalchemy.inspection import inspect
@@ -89,10 +89,13 @@ class Scan(Base):
     finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    duration_secs = column_property(func.timestampdiff(text('SECOND'), started_at, finished_at, type_=Integer)) # have to include type otherwise automatic schema generation fails
 
     @classmethod
     def __declare_last__(cls):
-        # configure derived field after all mappers are ready so Evidence is defined w/o reordering
+        # configure correlated subquery derived field after all mappers are ready so Evidence is defined w/o reordering
+        # otherwise Evidence hasn't been defined yet and we get an error
+        # see https://docs.sqlalchemy.org/en/21/orm/mapped_sql_expr.html#using-column-property
         cls.evidence_count = column_property(
             select(func.count(Evidence.id))
             .where(Evidence.scan_id == cls.id)
