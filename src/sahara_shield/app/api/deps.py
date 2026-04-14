@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import Depends, Cookie, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sahara_shield.app.core.db import db_session_mngr
-from sahara_shield.app.model.services import ReadUsersService, UserAuthService, CurrentUserService, ReadScansService
+from sahara_shield.app.model.services import ReadUsersService, UserAuthService, CurrentUserService, ReadScansService, ReadEvidenceService
 from sahara_shield.app.model.orm import User
 
 def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
@@ -24,6 +24,9 @@ def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
 
 def get_read_scans_service(db_session:AsyncSession=Depends(db_session_mngr)):
     return ReadScansService(db_session)
+
+def get_read_evidence_service(db_session:AsyncSession=Depends(db_session_mngr)):
+    return ReadEvidenceService(db_session)
 
 def get_user_auth_service(db_session:AsyncSession=Depends(db_session_mngr)):
     """
@@ -96,5 +99,6 @@ async def get_current_user(session_id:str=Cookie(default=''), current_user_servi
 
 ReadUsersServiceDep = Annotated[ReadUsersService, Depends(get_read_users_service)]
 ReadScansServiceDep = Annotated[ReadScansService, Depends(get_read_scans_service)]
+ReadEvidenceServiceDep = Annotated[ReadEvidenceService, Depends(get_read_evidence_service)]
 UserAuthServiceDep = Annotated[UserAuthService, Depends(get_user_auth_service)]
 CurrentUserDep = Annotated[User, Depends(get_current_user)]

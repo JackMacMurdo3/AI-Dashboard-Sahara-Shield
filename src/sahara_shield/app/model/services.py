@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, Result
 from datetime import timedelta
-from sahara_shield.app.model.orm import User, AuthSession, Scan
+from sahara_shield.app.model.orm import User, AuthSession, Scan, Evidence
 from sahara_shield.app.core.security import password_sec_measure
 
 class Service():
@@ -38,6 +38,21 @@ class ReadUsersService(Service):
 class ReadScansService(Service):
     async def read_by_user_id(self, user_id:int) -> list[Scan]:
         stmt = select(Scan).where(Scan.user_id == user_id)
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.scalars().all()
+
+        return rows
+    
+class ReadEvidenceService(Service):
+    async def read_by_user_id(self, user_id:int) -> list[Evidence]:
+        stmt = (
+            # Evidence = left, Scan = right
+            select(Evidence) # SELECT * FROM Evidence (only keep rows from left table, none from right table)
+            .join(Scan, Evidence.scan_id == Scan.id) # LEFT JOIN Scan ON Evidence.scan_id = Scan.id
+            .where(Scan.user_id == user_id) # WHERE Scan.user_id = user_id
+            )
 
         res: Result = await self.db_session.execute(stmt)
 

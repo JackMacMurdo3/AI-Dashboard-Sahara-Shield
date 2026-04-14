@@ -17,6 +17,7 @@ from sahara_shield.app.model.enums import EvidenceThreatTypes, EvidenceSeveritie
 from sahara_shield.app.core.security import password_sec_measure
 
 DEFAULT_PASSWORD = 'sahara123!'
+FILENAME_EXTENSIONS = ['js', 'py', 'html', 'css']
 fake = Faker()
 
 class UserFactory(SQLAlchemyModelFactory):
@@ -71,7 +72,12 @@ class EvidenceFactory(SQLAlchemyModelFactory):
 
     id = factory.Faker('pyint', min_value=1)
     scan_id = factory.Faker('pyint', min_value=1)
-    filename = factory.Faker('file_name')
+    filename = factory.LazyFunction(
+        lambda: fake.file_path(
+            depth=random.randint(1, 3), 
+            absolute=False, 
+            extension=FILENAME_EXTENSIONS)
+            )
     threat_type = factory.fuzzy.FuzzyChoice(EvidenceThreatTypes)
     confidence_level = factory.Faker('pyint', min_value=0, max_value=100)
     severity = factory.fuzzy.FuzzyChoice(EvidenceSeverities)

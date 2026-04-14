@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Response, HTTPException, Cookie
-from sahara_shield.app.api.deps import UserAuthServiceDep, ReadUsersServiceDep
+from sahara_shield.app.api.deps import UserAuthServiceDep
 from sahara_shield.app.core.config import app_settings
 
 auth_router = APIRouter(
