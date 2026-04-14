@@ -80,7 +80,7 @@ class Scan(Base):
 
     __tablename__ = 'scans'
 
-    id: Mapped[str] = mapped_column(String(length=96), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     repository_url: Mapped[str] = mapped_column(String(255), nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
