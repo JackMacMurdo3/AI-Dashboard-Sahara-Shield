@@ -9,7 +9,7 @@ evidence_router = APIRouter(
 )
 
 @evidence_router.get('/me')
-async def read_current_user_evidence(user:CurrentUserDep, read_evidence_service:ReadEvidenceServiceDep):
+async def read_my_evidence(user:CurrentUserDep, read_evidence_service:ReadEvidenceServiceDep):
     user_id = user.id
     evidence = await read_evidence_service.read_by_user_id(user_id)
     evidence_info = EvidenceSchema(load_instance=False).dump(evidence, many=True)

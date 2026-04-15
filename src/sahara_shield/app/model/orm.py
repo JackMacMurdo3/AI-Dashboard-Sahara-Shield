@@ -52,6 +52,51 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
 
+    @classmethod
+    def __declare_last__(cls):
+        # configure correlated subquery derived field after all mappers are ready so all mappers are defined w/o reordering
+        # otherwise e.g. Scan hasn't been defined yet and we get an error
+        # see https://docs.sqlalchemy.org/en/21/orm/mapped_sql_expr.html#using-column-property
+        cls.scans_count = column_property(
+            select(func.count(Scan.id))
+            .select_from(Scan)
+            .where(Scan.user_id == cls.id)
+            .correlate_except(Scan)
+            .scalar_subquery()
+        )
+
+        cls.files_scanned_count = column_property(
+            select(func.count(func.distinct(Evidence.filename))) # 4 - remove duplicate rows based on evidence.filename, then count number of remaining rows
+            .select_from(Evidence) # 1 - get all evidence rows
+            .join(Scan, Evidence.scan_id == Scan.id) # 2 - left join w/ scans on scan id
+            .where(Scan.user_id == cls.id) # 3 - filter joined evidence + scan rows where scan.user_id is this user instance's id
+            .correlate_except(Evidence, Scan)
+            .scalar_subquery()
+        )
+        
+        # count of evidence generated via scan initiated by user where severity type is none
+        cls.clean_files_count = column_property(
+            select(func.count(Evidence.id))
+            .select_from(Evidence)
+            .join(Scan, Evidence.scan_id == Scan.id)
+            .where(Scan.user_id == cls.id)
+            .where(Evidence.severity == EvidenceSeverities.NONE)
+            .correlate_except(Evidence, Scan)
+            .scalar_subquery()
+        )
+
+        # count of evidence generate via scan initiated by user where severity type is NOT none
+        # this means a security threat of some kind was detected, regardless of severity
+        cls.bad_files_count = column_property(
+            select(func.count(Evidence.id))
+            .select_from(Evidence)
+            .join(Scan, Evidence.scan_id == Scan.id)
+            .where(Scan.user_id == cls.id)
+            .where(Evidence.severity != EvidenceSeverities.NONE)
+            .correlate_except(Evidence, Scan)
+            .scalar_subquery()
+        )
+
 class AuthSession(Base):
     '''
     Represents an authentication session for a user.
@@ -93,11 +138,9 @@ class Scan(Base):
 
     @classmethod
     def __declare_last__(cls):
-        # configure correlated subquery derived field after all mappers are ready so Evidence is defined w/o reordering
-        # otherwise Evidence hasn't been defined yet and we get an error
-        # see https://docs.sqlalchemy.org/en/21/orm/mapped_sql_expr.html#using-column-property
         cls.evidence_count = column_property(
             select(func.count(Evidence.id))
+            .select_from(Evidence)
             .where(Evidence.scan_id == cls.id)
             .correlate_except(Evidence)
             .scalar_subquery()

@@ -9,7 +9,7 @@ users_router = APIRouter(
 )
 
 @users_router.get('/me')
-async def read_current_user(user:CurrentUserDep):
+async def read_my_info(user:CurrentUserDep):
     user_info = UserSchema(load_instance=False).dump(user)
     user_pub_info = UserPublic.Schema().load(user_info, unknown='exclude')
     return user_pub_info

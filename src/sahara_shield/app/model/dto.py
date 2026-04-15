@@ -25,5 +25,9 @@ class UserPublic():
     email: str
     role: UserRoles
     verified: bool
+    scans_count: int
+    files_scanned_count: int
+    clean_files_count: int
+    bad_files_count: int
     created_at: datetime
     updated_at: datetime
