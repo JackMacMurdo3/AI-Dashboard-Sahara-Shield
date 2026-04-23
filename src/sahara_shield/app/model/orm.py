@@ -5,10 +5,10 @@ This module defines the SQLAlchemy mapped classes which are used for persisting 
 '''
 
 import uuid
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Mapper, column_property
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Mapper, column_property, validates
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Boolean, select, func, text
-from sahara_shield.app.model.enums import UserRoles, EvidenceThreatTypes, EvidenceSeverities
+from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Boolean, select, func, text, CheckConstraint, UniqueConstraint, Text, Index
+from sahara_shield.app.model.enums import UserRoles, HTTPMethods, PolicyModes, ThreatSeverities, SecurityActions, ThreatTypes
 from datetime import datetime, timezone
 from sqlalchemy.inspection import inspect
 from sqlalchemy import event
@@ -37,6 +37,18 @@ class Base(DeclarativeBase, AsyncAttrs):
         values = ', '.join(f'{attr.key} = {getattr(self, attr.key)}' for attr in attrs)
         return f'{self.__class__.__name__}({values})'
 
+
+# we need this so alembic can understand the schema of our database when performing migrations
+# see https://docs.sqlalchemy.org/en/20/tutorial/metadata.html
+db_metadata = Base.metadata
+db_metadata.naming_convention = { # see https://docs.sqlalchemy.org/en/21/core/constraints.html#configuring-constraint-naming-conventions
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+
 class User(Base):
     '''
     Represents a user of the system.
@@ -51,51 +63,6 @@ class User(Base):
     verified: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
-
-    @classmethod
-    def __declare_last__(cls):
-        # configure correlated subquery derived field after all mappers are ready so all mappers are defined w/o reordering
-        # otherwise e.g. Scan hasn't been defined yet and we get an error
-        # see https://docs.sqlalchemy.org/en/21/orm/mapped_sql_expr.html#using-column-property
-        cls.scans_count = column_property(
-            select(func.count(Scan.id))
-            .select_from(Scan)
-            .where(Scan.user_id == cls.id)
-            .correlate_except(Scan)
-            .scalar_subquery()
-        )
-
-        cls.files_scanned_count = column_property(
-            select(func.count(func.distinct(Evidence.filename))) # 4 - remove duplicate rows based on evidence.filename, then count number of remaining rows
-            .select_from(Evidence) # 1 - get all evidence rows
-            .join(Scan, Evidence.scan_id == Scan.id) # 2 - left join w/ scans on scan id
-            .where(Scan.user_id == cls.id) # 3 - filter joined evidence + scan rows where scan.user_id is this user instance's id
-            .correlate_except(Evidence, Scan)
-            .scalar_subquery()
-        )
-        
-        # count of evidence generated via scan initiated by user where severity type is none
-        cls.clean_files_count = column_property(
-            select(func.count(Evidence.id))
-            .select_from(Evidence)
-            .join(Scan, Evidence.scan_id == Scan.id)
-            .where(Scan.user_id == cls.id)
-            .where(Evidence.severity == EvidenceSeverities.NONE)
-            .correlate_except(Evidence, Scan)
-            .scalar_subquery()
-        )
-
-        # count of evidence generate via scan initiated by user where severity type is NOT none
-        # this means a security threat of some kind was detected, regardless of severity
-        cls.bad_files_count = column_property(
-            select(func.count(Evidence.id))
-            .select_from(Evidence)
-            .join(Scan, Evidence.scan_id == Scan.id)
-            .where(Scan.user_id == cls.id)
-            .where(Evidence.severity != EvidenceSeverities.NONE)
-            .correlate_except(Evidence, Scan)
-            .scalar_subquery()
-        )
 
 class AuthSession(Base):
     '''
@@ -119,47 +86,125 @@ class AuthSession(Base):
         Checks whether authentication session for user has expired based on current time.
         '''
         return self.expires_at < datetime.now(tz=self.expires_at.tzinfo) # see https://stackoverflow.com/questions/15307623/cant-compare-naive-and-aware-datetime-now-challenge-datetime-end
-    
-class Scan(Base):
+
+class ProtectedApp(Base):
     '''
-    Represents a security scan of code files in a remote repository by agent, initiated at request of user
+    Represents a web app the system is intended to protect/monitor.
     '''
 
-    __tablename__ = 'scans'
+    __tablename__ = 'protected_apps'
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
-    repository_url: Mapped[str] = mapped_column(String(255), nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
-    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    owner_user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    url: Mapped[str] = mapped_column(String(255), nullable=False)
+    live: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
-    duration_secs = column_property(func.timestampdiff(text('SECOND'), started_at, finished_at, type_=Integer)) # have to include type otherwise automatic schema generation fails
 
-    @classmethod
-    def __declare_last__(cls):
-        cls.evidence_count = column_property(
-            select(func.count(Evidence.id))
-            .select_from(Evidence)
-            .where(Evidence.scan_id == cls.id)
-            .correlate_except(Evidence)
-            .scalar_subquery()
-        )
-
-class Evidence(Base):
+    def is_live(self) -> bool:
+        return self.live
+    
+class AppSecurityPolicy(Base):
     '''
-    Represents security vulnerabilities found in a file of a remote repository scanned by agent.
+    Represents the high-level security policy for a specific API route of a protected web app.
+    The policy determines which requests are sent to the agent for analysis and controls
+    whether the request is blocked/allowed based on a block score threshold.
+
+    The system determines which policy (and subsequent analysis/security controls) to use by
+    matching the request to a web app + HTTP method + API endpoint pattern.
     '''
 
-    __tablename__ = 'evidence'
+    __tablename__ = 'app_security_policies'
+    __table_args__ = (
+        UniqueConstraint(
+            'protected_app_id',
+            'http_method',
+            'route_pattern',
+        ),
+        CheckConstraint(
+            'min_block_score >= 0 AND min_block_score <= 100',
+            name='min_block_score_range',
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
-    scan_id: Mapped[int] = mapped_column(ForeignKey('scans.id'))
-    filename: Mapped[str] = mapped_column(String(length=255), nullable=False)
-    threat_type: Mapped[EvidenceThreatTypes] = mapped_column(Enum(EvidenceThreatTypes), nullable=False, default=EvidenceThreatTypes.NONE)
-    confidence_level: Mapped[int] = mapped_column(Integer(), nullable=False, default=0)
-    severity: Mapped[EvidenceSeverities] = mapped_column(Enum(EvidenceSeverities), nullable=False, default=EvidenceSeverities.NONE)
+    protected_app_id: Mapped[int] = mapped_column(ForeignKey('protected_apps.id'))
+    http_method: Mapped[HTTPMethods] = mapped_column(Enum(HTTPMethods), nullable=False)
+    route_pattern: Mapped[str] = mapped_column(String(255), nullable=False)
+    mode: Mapped[PolicyModes] = mapped_column(Enum(PolicyModes), nullable=False, default=PolicyModes.MONITOR)
+    active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True)
+    priority: Mapped[int] = mapped_column(Integer(), nullable=False, default=100)
+    min_block_score: Mapped[int] = mapped_column(Integer(), nullable=False, default=70)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+
+    @validates('min_block_score')
+    def validate_min_block_score(self, key, value):
+        if value < 0 or value > 100:
+            raise ValueError('min_block_score must be within [0, 100]')
+
+        return value
     
-# we need this so alembic can understand the schema of our database when performing migrations
-# see https://docs.sqlalchemy.org/en/20/tutorial/metadata.html
-db_metadata = Base.metadata
+    def should_block(self, risk_score:int):
+        return risk_score >= self.min_block_score
+    
+class FlaggedRequest(Base):
+    '''
+    Represents an HTTP request flagged in some way as suspicious/malicious. For security,
+    request metadata (e.g. IP address, body, etc.) are intended to be encrypted in rest.
+    '''
+
+    __tablename__ = 'flagged_requests'
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True)
+    protected_app_id: Mapped[int] = mapped_column(ForeignKey('protected_apps.id'), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    http_method: Mapped[HTTPMethods] = mapped_column(Enum(HTTPMethods), nullable=False)
+    route_path: Mapped[str] = mapped_column(String(255), nullable=False)
+    query_string_encrypted: Mapped[str] = mapped_column(Text(), nullable=True)
+    headers_encrypted: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    body_encrypted: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    source_ip_encrypted: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    user_agent_encrypted: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+
+class SecurityEvent(Base):
+    '''
+    Represents an interaction between the system and an intercepted HTTP request.
+    '''
+
+    __tablename__ = 'security_events'
+    __table_args__ = (
+        CheckConstraint('confidence_pct >= 0 AND confidence_pct <= 100', name='confidence_pct_range'),
+        CheckConstraint('risk_score >= 0 AND risk_score <= 100', name='risk_score_range'),
+    )
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True)
+    flagged_request_id: Mapped[int] = mapped_column(ForeignKey('flagged_requests.id'), nullable=False)
+    app_security_policy_id: Mapped[int] = mapped_column(ForeignKey('app_security_policies.id'), nullable=False)
+    detected_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    threat_type: Mapped[ThreatTypes] = mapped_column(Enum(ThreatSeverities), nullable=False)
+    threat_severity: Mapped[ThreatSeverities] = mapped_column(Enum(ThreatSeverities), nullable=False)
+    confidence_pct: Mapped[int] = mapped_column(Integer(), nullable=False)
+    risk_score: Mapped[int] = mapped_column(Integer(), nullable=False)
+    action: Mapped[SecurityActions] = mapped_column(Enum(SecurityActions), nullable=False)
+    reason_desc: Mapped[str] = mapped_column(String(1500), nullable=False, default='No reason given.')
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+
+    @validates('confidence_pct')
+    def validate_confidence_pct(self, key, value):
+        if value < 0 or value > 100:
+            raise ValueError('confidence_pct must be within [0, 100]')
+
+        return value
+
+    @validates('risk_score')
+    def validate_risk_score(self, key, value):
+        if value < 0 or value > 100:
+            raise ValueError('risk_score must be within [0, 100]')
+
+        return value
+    

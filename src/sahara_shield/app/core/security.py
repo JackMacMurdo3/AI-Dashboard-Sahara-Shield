@@ -3,6 +3,7 @@ Contains app-wide security measures
 '''
 
 from argon2 import PasswordHasher
+from sahara_shield.app.model.enums import SeverityScores, ThreatSeverities
 from sahara_shield.app.core.config import app_settings, AppSettings
 
 class PasswordSecurityMeasure():
@@ -41,5 +42,24 @@ class PasswordSecurityMeasure():
             return True
         except Exception as e:
             return False
+        
+class RiskScoreCalculator():
+    def __init__(self, app_settings:AppSettings):
+        self.app_settings = app_settings
+
+    def calc(self, severity:ThreatSeverities, confidence_pct:int) -> int:
+        if confidence_pct < 0 or confidence_pct > 100:
+            raise ValueError('confidence_pct must be within [0, 100]')
+
+        severity_score = SeverityScores[severity.name].value
+
+        risk_score = (
+            (self.app_settings.SEC_POLICY_RISK_SCORE_W1 * severity_score)
+            + (self.app_settings.SEC_POLICY_RISK_SCORE_W2 * confidence_pct)
+        )
+
+        # keep risk score as an integer in [0, 100] so policy checks are deterministic
+        return max(0, min(100, int(round(risk_score))))
     
 password_sec_measure = PasswordSecurityMeasure(app_settings)
+risk_score_calculator = RiskScoreCalculator(app_settings)

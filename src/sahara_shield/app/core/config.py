@@ -33,7 +33,9 @@ class AppSettings(BaseSettings):
     AUTH_COOKIE_MAX_AGE: int = 86400 # authentication cookies expire after a day
     PASSWORD_MIN_LEN: int = 12
     PASSWORD_MAX_LEN: int = 64
-    USER_VERIFICATION_TOKEN_MAX_AGE: int = 300 # verification token for registration/password resets expires after 5 minutes
+
+    SEC_POLICY_RISK_SCORE_W1: float = 0.6
+    SEC_POLICY_RISK_SCORE_W2: float = 0.4
 
     def make_mysql_db_url(self) -> str:
         '''

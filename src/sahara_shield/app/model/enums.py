@@ -1,5 +1,5 @@
 import enum
-from enum import StrEnum
+from enum import StrEnum, IntEnum
 
 class UserRoles(StrEnum):
     '''
@@ -11,26 +11,52 @@ class UserRoles(StrEnum):
     SUPERUSER = enum.auto()
     STANDARD = enum.auto()
 
-class EvidenceThreatTypes(StrEnum):
-    '''
-    Stores the threat types the agent is able to classify
-    and provide as evidence after scanning a file.
-    '''
+class HTTPMethods(StrEnum):
+    GET = enum.auto()
+    POST = enum.auto()
+    PUT = enum.auto()
+    PATCH = enum.auto()
+    DELETE = enum.auto()
 
-    XSS = enum.auto()
+class PolicyModes(StrEnum):
+    MONITOR = enum.auto()
+    ENFORCE = enum.auto()
+
+class ThreatTypes(StrEnum):
+    NONE = enum.auto()
+    UNKNOWN = enum.auto()
     SQLi = enum.auto()
-    WEAK_HASH = enum.auto()
-    WEAK_PASSWORDS = enum.auto()
+    XSS = enum.auto()
+    PATH_TRAVERSAL = enum.auto()
+
+class ThreatSeverities(StrEnum):
+    '''
+    Stores severity classifications returned by threat analysis.
+    '''
+
     NONE = enum.auto()
-
-class EvidenceSeverities(StrEnum):
-    '''
-    Stores the severity types the agent is able to classify
-    and provide as evidence after scanning a file.
-    '''
-
-    CRITICAL = enum.auto()
-    HIGH = enum.auto()
-    MODERATE = enum.auto()
     LOW = enum.auto()
-    NONE = enum.auto()
+    MODERATE = enum.auto()
+    HIGH = enum.auto()
+    CRITICAL = enum.auto()
+
+class SeverityScores(IntEnum):
+    '''
+    Numeric score mapping for severity classifications. Use with confidence
+    values to compute a final request block score.
+    '''
+
+    NONE = 0
+    LOW = 25
+    MODERATE = 50
+    HIGH = 75
+    CRITICAL = 100
+
+class SecurityActions(StrEnum):
+    '''
+    Stores the action taken by the security system for a request.
+    '''
+
+    ALLOW = enum.auto()
+    BLOCK = enum.auto()
+    MONITOR_ONLY = enum.auto()

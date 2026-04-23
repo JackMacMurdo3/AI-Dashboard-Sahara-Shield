@@ -7,7 +7,7 @@ This module defines the Marshmallow schemas for marshalling/demarshalling domain
 '''
 
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from sahara_shield.app.model.orm import User, Scan, Evidence
+from sahara_shield.app.model.orm import User
 
 class UserSchema(SQLAlchemyAutoSchema):
     '''
@@ -16,28 +16,6 @@ class UserSchema(SQLAlchemyAutoSchema):
 
     class Meta:
         model = User
-        include_fk = True
-        load_instance = True
-        transient = True
-        
-class ScanSchema(SQLAlchemyAutoSchema):
-    '''
-    Schema for Scan domain objects.
-    '''
-
-    class Meta:
-        model = Scan
-        include_fk = True
-        load_instance = True
-        transient = True
-
-class EvidenceSchema(SQLAlchemyAutoSchema):
-    '''
-    Scehma for Evidence domain objects.
-    '''
-    
-    class Meta:
-        model = Evidence
         include_fk = True
         load_instance = True
         transient = True
