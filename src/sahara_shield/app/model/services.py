@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, Result
+from sqlalchemy.exc import IntegrityError
 from datetime import timedelta
 from sahara_shield.app.model.orm import User, AuthSession, ProtectedApp, AppSecurityPolicy
 from sahara_shield.app.core.security import password_sec_measure
@@ -48,6 +49,26 @@ class ReadProtectedAppsService(Service):
         info = res.scalars().all()
 
         return info
+
+class CreateProtectedAppService(Service):
+    '''
+    Asynchronously create new protected apps in the database
+    '''
+
+    async def create(self, owner_user_id: int, name: str, url: str) -> ProtectedApp:
+        '''
+        Asynchronously create a new protected app for a user
+        '''
+        
+        try:
+            protected_app = ProtectedApp(owner_user_id=owner_user_id, name=name, url=url)
+            self.db_session.add(protected_app)
+            await self.save_changes()
+            return protected_app
+        
+        except IntegrityError:
+            await self.discard_changes()
+            raise Exception(f'Creation failed! A protected app with name "{name}" and URL "{url}" already exists for user {owner_user_id}.')
     
 class ReadAppSecurityPoliciesService(Service):
     '''

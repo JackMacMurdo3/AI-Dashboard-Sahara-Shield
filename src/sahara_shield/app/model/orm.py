@@ -94,6 +94,9 @@ class ProtectedApp(Base):
     '''
 
     __tablename__ = 'protected_apps'
+    __table_args__ = (
+        UniqueConstraint('owner_user_id', 'name', 'url'),
+    )
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
     owner_user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
