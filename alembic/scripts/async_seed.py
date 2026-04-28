@@ -7,10 +7,10 @@ import argparse
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import insert, text
 from argparse import Namespace
-from sahara_shield.app.seed_data import generate_seed_users, generate_seed_protected_apps
-from sahara_shield.app.model.marshal import UserSchema, ProtectedAppSchema
+from sahara_shield.app.seed_data import generate_seed_users, generate_seed_protected_apps, generate_seed_app_security_policies
+from sahara_shield.app.model.marshal import UserSchema, ProtectedAppSchema, AppSecurityPolicySchema
 from sahara_shield.app.core.config import app_settings
-from sahara_shield.app.model.orm import User, ProtectedApp
+from sahara_shield.app.model.orm import User, ProtectedApp, AppSecurityPolicy
 
 def make_args_parser():
     parser = argparse.ArgumentParser(
@@ -34,6 +34,13 @@ def make_args_parser():
     )
 
     parser.add_argument(
+        '--n-app-security-policies',
+        type=int,
+        default=10,
+        help='Number of app security policies to generate',
+    )
+
+    parser.add_argument(
         '--seed',
         type=int,
         default=6424,
@@ -51,6 +58,7 @@ def make_args_parser():
 async def insert_seed_data(
     n_users:int,
     n_protected_apps:int,
+    n_app_security_policies:int,
     pretruncate_tables:bool=False,
 ):
     users = generate_seed_users(n=n_users)
@@ -58,6 +66,9 @@ async def insert_seed_data(
 
     protected_apps = generate_seed_protected_apps(n=n_protected_apps, users=users)
     protected_app_dicts = ProtectedAppSchema(load_instance=False).dump(protected_apps, many=True)
+
+    app_security_policies = generate_seed_app_security_policies(n=n_app_security_policies, protected_apps=protected_apps)
+    app_security_policy_dicts = AppSecurityPolicySchema(load_instance=False).dump(app_security_policies, many=True)
 
     engine = create_async_engine(
             app_settings.make_mysql_db_url(),
@@ -72,10 +83,22 @@ async def insert_seed_data(
             await conn.execute(text('SET FOREIGN_KEY_CHECKS = 0'))
             await conn.execute(text(f'TRUNCATE TABLE {User.__tablename__}'))
             await conn.execute(text(f'TRUNCATE TABLE {ProtectedApp.__tablename__}'))
+            await conn.execute(text(f'TRUNCATE TABLE {AppSecurityPolicy.__tablename__}'))
 
-        await conn.execute(insert(User), user_dicts)
-
-        await conn.execute(insert(ProtectedApp), protected_app_dicts)
+        try:
+            await conn.execute(insert(User), user_dicts)
+        except Exception as e:
+            raise Exception(f'Error inserting users: {e}')
+        
+        try:
+            await conn.execute(insert(ProtectedApp), protected_app_dicts)
+        except Exception as e:
+            raise Exception(f'Error inserting protected apps: {e}')
+        
+        try:
+            await conn.execute(insert(AppSecurityPolicy), app_security_policy_dicts)
+        except Exception as e:
+            raise Exception(f'Error inserting app security policies: {e}')
 
         await conn.commit()
 
@@ -91,6 +114,7 @@ async def main(args:Namespace):
     await insert_seed_data(
         args.n_users,
         args.n_protected_apps,
+        args.n_app_security_policies,
         pretruncate_tables=args.pretruncate_tables,
     )
 

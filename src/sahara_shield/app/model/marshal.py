@@ -7,7 +7,7 @@ This module defines the Marshmallow schemas for marshalling/demarshalling domain
 '''
 
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from sahara_shield.app.model.orm import User, ProtectedApp
+from sahara_shield.app.model.orm import User, ProtectedApp, AppSecurityPolicy
 
 class UserSchema(SQLAlchemyAutoSchema):
     '''
@@ -24,6 +24,13 @@ class UserSchema(SQLAlchemyAutoSchema):
 class ProtectedAppSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = ProtectedApp
+        include_fk = True
+        load_instance = True
+        transient = True
+
+class AppSecurityPolicySchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = AppSecurityPolicy
         include_fk = True
         load_instance = True
         transient = True

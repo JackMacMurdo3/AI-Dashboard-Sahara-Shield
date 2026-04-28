@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 781f1daec366
+Revision ID: 907b9a8e9f56
 Revises: 
-Create Date: 2026-04-28 14:33:36.465301
+Create Date: 2026-04-28 16:05:56.492474
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '781f1daec366'
+revision: str = '907b9a8e9f56'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -64,6 +64,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.CheckConstraint('min_block_score >= 0 AND min_block_score <= 100', name=op.f('ck_app_security_policies_min_block_score_range')),
+    sa.CheckConstraint('priority >= 0 AND priority <= 100', name=op.f('ck_app_security_policies_priority_range')),
     sa.ForeignKeyConstraint(['protected_app_id'], ['protected_apps.id'], name=op.f('fk_app_security_policies_protected_app_id_protected_apps')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_app_security_policies')),
     sa.UniqueConstraint('protected_app_id', 'http_method', 'route_pattern', name=op.f('uq_app_security_policies_protected_app_id'))

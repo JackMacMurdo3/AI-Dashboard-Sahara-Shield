@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, Result
 from datetime import timedelta
-from sahara_shield.app.model.orm import User, AuthSession, ProtectedApp
+from sahara_shield.app.model.orm import User, AuthSession, ProtectedApp, AppSecurityPolicy
 from sahara_shield.app.core.security import password_sec_measure
 
 class Service():
@@ -23,7 +23,7 @@ class Service():
 
 class ReadUsersService(Service):
     '''
-    Asynchronously retrieve Users from the database
+    Asynchronously retrieve users from the database
     '''
 
     async def read_by_id(self, id:int):
@@ -37,10 +37,10 @@ class ReadUsersService(Service):
     
 class ReadProtectedAppsService(Service):
     '''
-    Asynchronously retrieve ProtectedApps from the database
+    Asynchronously retrieve protected apps from the database
     '''
 
-    async def read_by_owner_user_id(self, owner_user_id):
+    async def read_by_owner_user_id(self, owner_user_id:int):
         stmt = select(ProtectedApp).where(ProtectedApp.owner_user_id == owner_user_id)
 
         res: Result = await self.db_session.execute(stmt)
@@ -48,7 +48,26 @@ class ReadProtectedAppsService(Service):
         info = res.scalars().all()
 
         return info
+    
+class ReadAppSecurityPoliciesService(Service):
+    '''
+    Asynchronously retrieve app security policies from the database
+    '''
 
+    async def read_by_user_id(self, user_id:int):
+        stmt = (
+            # app_security_policies = left table, protected_apps = right table
+            select(AppSecurityPolicy) # SELECT * FROM app_security_policies (only keep rows from left table, none from right table)
+            .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id) # LEFT JOIN protected_apps ON app_security_policies.protected_app_id = protected_apps.id
+            .where(ProtectedApp.owner_user_id == user_id) # WHERE protected_apps.user_id = user_id
+            )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.scalars().all()
+
+        return rows
+    
 class UserAuthService(Service):
     async def authenticate(self, email:str, password:str):
         '''

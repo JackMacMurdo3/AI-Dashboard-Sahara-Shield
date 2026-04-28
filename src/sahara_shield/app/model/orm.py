@@ -124,6 +124,10 @@ class AppSecurityPolicy(Base):
             'route_pattern',
         ),
         CheckConstraint(
+            'priority >= 0 AND priority <= 100',
+            name='priority_range',
+        ),
+        CheckConstraint(
             'min_block_score >= 0 AND min_block_score <= 100',
             name='min_block_score_range',
         ),
@@ -139,6 +143,13 @@ class AppSecurityPolicy(Base):
     min_block_score: Mapped[int] = mapped_column(Integer(), nullable=False, default=70)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+
+    @validates('priority')
+    def validate_priority(self, key, value):
+        if value < 0 or value > 100:
+            raise ValueError('priority must be within [0, 100]')
+
+        return value
 
     @validates('min_block_score')
     def validate_min_block_score(self, key, value):

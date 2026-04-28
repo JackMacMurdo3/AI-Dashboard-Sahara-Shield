@@ -8,7 +8,8 @@ from typing import Annotated
 from fastapi import Depends, Cookie, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sahara_shield.app.core.db import db_session_mngr
-from sahara_shield.app.model.services import ReadUsersService, UserAuthService, CurrentUserService, ReadProtectedAppsService
+from sahara_shield.app.model.services import ReadUsersService, UserAuthService, CurrentUserService
+from sahara_shield.app.model.services import ReadProtectedAppsService, ReadAppSecurityPoliciesService
 from sahara_shield.app.model.orm import User
 
 def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
@@ -59,6 +60,9 @@ def get_current_user_service(
 def get_read_protected_apps_service(db_session:AsyncSession=Depends(db_session_mngr)):
     return ReadProtectedAppsService(db_session)
 
+def get_read_app_security_policies_service(db_session:AsyncSession=Depends(db_session_mngr)):
+    return ReadAppSecurityPoliciesService(db_session)
+
 async def get_current_user(session_id:str=Cookie(default=''), current_user_service:CurrentUserService=Depends(get_current_user_service)):
     """
     Retrieve the current authenticated user for a request based on the provided session ID (token).
@@ -98,3 +102,4 @@ ReadUsersServiceDep = Annotated[ReadUsersService, Depends(get_read_users_service
 UserAuthServiceDep = Annotated[UserAuthService, Depends(get_user_auth_service)]
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
 ReadProtectedAppsServiceDep = Annotated[ReadProtectedAppsService, Depends(get_read_protected_apps_service)]
+ReadAppSecurityPoliciesServiceDep = Annotated[ReadAppSecurityPoliciesService, Depends(get_read_app_security_policies_service)]
