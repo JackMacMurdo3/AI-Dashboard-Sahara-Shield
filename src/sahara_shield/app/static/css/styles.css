@@ -59,9 +59,33 @@ header {
   color: var(--muted);
   display: flex;
   gap: 20px;
+  align-items: center;
 }
 
 .status-bar span { color: var(--lime); }
+
+.logout-btn {
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--error);
+  border: 1px solid var(--error);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+.logout-btn:active {
+  opacity: 0.7;
+}
 
 /* Stats */
 .stats {
@@ -505,6 +529,96 @@ header {
 .log-warn { color: var(--warn); }
 .log-err  { color: var(--error); }
 .log-msg  { color: #888; }
+
+/* Login page */
+.login-page {
+  justify-content: center;
+}
+
+.login-shell {
+  width: min(460px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.login-subtitle {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.form-field input {
+  width: 100%;
+  background: #0c0c0c;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 11px 12px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-field input:focus {
+  border-color: var(--lime-dim);
+  box-shadow: 0 0 0 3px var(--lime-glow);
+}
+
+.login-msg {
+  min-height: 18px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.login-msg.error {
+  color: var(--error);
+}
+
+.login-msg.success {
+  color: var(--lime);
+}
+
+@media (max-width: 700px) {
+  body {
+    padding: 16px;
+  }
+
+  .login-shell {
+    width: 100%;
+  }
+}
 
 /* Animations */
 @keyframes pulse {

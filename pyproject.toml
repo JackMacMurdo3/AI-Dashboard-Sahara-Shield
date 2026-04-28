@@ -1,0 +1,27 @@
+[project]
+name = "sahara-shield"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Your Name",email = "you@example.com"}
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard] (>=0.135.2,<0.136.0)",
+    "sqlalchemy[asyncio] (>=2.0.48,<3.0.0)",
+    "alembic (>=1.18.4,<2.0.0)",
+    "faker (>=40.11.1,<41.0.0)",
+    "factory-boy (>=3.3.3,<4.0.0)",
+    "pytest (>=9.0.2,<10.0.0)",
+    "pymysql[rsa] (>=1.1.2,<2.0.0)",
+    "aiomysql (>=0.3.2,<0.4.0)",
+    "marshmallow-sqlalchemy (>=1.4.2,<2.0.0)",
+    "argon2-cffi (>=25.1.0,<26.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
