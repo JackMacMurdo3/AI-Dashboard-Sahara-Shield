@@ -7,6 +7,7 @@ This module defines the SQLAlchemy mapped classes which are used for persisting 
 import uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Mapper, column_property, validates
 from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy import JSON
 from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Boolean, select, func, text, CheckConstraint, UniqueConstraint, Text, Index
 from sahara_shield.app.model.enums import UserRoles, HTTPMethods, PolicyModes, ThreatSeverities, SecurityActions, ThreatTypes
 from datetime import datetime, timezone
@@ -151,8 +152,7 @@ class AppSecurityPolicy(Base):
     
 class FlaggedRequest(Base):
     '''
-    Represents an HTTP request flagged in some way as suspicious/malicious. For security,
-    request metadata (e.g. IP address, body, etc.) are intended to be encrypted in rest.
+    Represents an HTTP request flagged in some way as suspicious/malicious.
     '''
 
     __tablename__ = 'flagged_requests'
@@ -162,11 +162,10 @@ class FlaggedRequest(Base):
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     http_method: Mapped[HTTPMethods] = mapped_column(Enum(HTTPMethods), nullable=False)
     route_path: Mapped[str] = mapped_column(String(255), nullable=False)
-    query_string_encrypted: Mapped[str] = mapped_column(Text(), nullable=True)
-    headers_encrypted: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    body_encrypted: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    source_ip_encrypted: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    user_agent_encrypted: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    query_string: Mapped[str] = mapped_column(Text(), nullable=True)
+    headers: Mapped[dict | None] = mapped_column(JSON(), nullable=True, default=lambda: {})
+    body: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    source_ip: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
 

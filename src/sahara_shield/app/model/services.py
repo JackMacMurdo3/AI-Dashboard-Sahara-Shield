@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, Result
 from datetime import timedelta
-from sahara_shield.app.model.orm import User, AuthSession
+from sahara_shield.app.model.orm import User, AuthSession, ProtectedApp
 from sahara_shield.app.core.security import password_sec_measure
 
 class Service():
@@ -32,6 +32,20 @@ class ReadUsersService(Service):
         res: Result = await self.db_session.execute(stmt)
 
         info = res.scalars().one_or_none()
+
+        return info
+    
+class ReadProtectedAppsService(Service):
+    '''
+    Asynchronously retrieve ProtectedApps from the database
+    '''
+
+    async def read_by_owner_user_id(self, owner_user_id):
+        stmt = select(ProtectedApp).where(ProtectedApp.owner_user_id == owner_user_id)
+
+        res: Result = await self.db_session.execute(stmt)
+
+        info = res.scalars().all()
 
         return info
 
