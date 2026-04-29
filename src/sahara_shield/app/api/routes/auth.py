@@ -15,8 +15,6 @@ async def login(
     ):
     '''
     Authenticate a user and create an authenticated session.
-    
-    The controller handles authentication logic, session management, and cookie setup.
     '''
     return await controller.login(email, password, response)
 
@@ -28,8 +26,6 @@ async def logout(
     ):
     '''
     Terminate the current user's authenticated session.
-    
-    The controller handles session cleanup and cookie deletion.
     '''
     return await controller.logout(session_id, response)
 

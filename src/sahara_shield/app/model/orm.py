@@ -183,7 +183,7 @@ class FlaggedRequest(Base):
     __tablename__ = 'flagged_requests'
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
-    protected_app_id: Mapped[int] = mapped_column(ForeignKey('protected_apps.id'), nullable=False)
+    app_security_policy_id: Mapped[int] = mapped_column(ForeignKey('app_security_policies.id'), nullable=False)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     http_method: Mapped[HTTPMethods] = mapped_column(Enum(HTTPMethods), nullable=False)
     route_path: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -207,9 +207,7 @@ class SecurityEvent(Base):
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
     flagged_request_id: Mapped[int] = mapped_column(ForeignKey('flagged_requests.id'), nullable=False)
-    app_security_policy_id: Mapped[int] = mapped_column(ForeignKey('app_security_policies.id'), nullable=False)
-    detected_by: Mapped[str] = mapped_column(String(255), nullable=False)
-    threat_type: Mapped[ThreatTypes] = mapped_column(Enum(ThreatSeverities), nullable=False)
+    threat_type: Mapped[ThreatTypes] = mapped_column(Enum(ThreatTypes), nullable=False)
     threat_severity: Mapped[ThreatSeverities] = mapped_column(Enum(ThreatSeverities), nullable=False)
     confidence_pct: Mapped[int] = mapped_column(Integer(), nullable=False)
     risk_score: Mapped[int] = mapped_column(Integer(), nullable=False)

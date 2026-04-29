@@ -7,10 +7,8 @@ They form the bridge between API endpoints (routes) and business logic (services
 
 from fastapi import HTTPException, Response
 from sahara_shield.app.model.services import (
-    CreateProtectedAppService,
-    ReadProtectedAppsService,
-    ReadAppSecurityPoliciesService,
-    UserAuthService,
+    CreateProtectedAppService, ReadProtectedAppsService,
+    ReadAppSecurityPoliciesService, UserAuthService,
 )
 from sahara_shield.app.model.marshal import ProtectedAppSchema
 from sahara_shield.app.model.marshal import AppSecurityPolicySchema
@@ -80,7 +78,6 @@ class ProtectedAppController(Controller):
 
     pass
 
-
 class AppSecurityPolicyController(Controller):
     '''
     Orchestrates app security policy operations.
@@ -96,7 +93,6 @@ class AppSecurityPolicyController(Controller):
         '''
         policies = await self.read_service.read_by_user_id(user.id)
         return self.schema.dump(policies, many=True)
-
 
 class AuthController(Controller):
     '''
@@ -132,13 +128,13 @@ class AuthController(Controller):
         except Exception:
             raise HTTPException(status_code=401, detail='Invalid email or password')
 
-        # Create and persist the auth session
+        # reate and persist the auth session
         auth_session = await self.auth_service.create_auth_session(
             user_id, self.app_settings.AUTH_COOKIE_MAX_AGE, persist=True
         )
         await self.auth_service.save_changes()
 
-        # Set the authentication cookie
+        #Set the authentication cookie
         self._set_auth_cookie(response, auth_session)
 
         return {
@@ -163,7 +159,7 @@ class AuthController(Controller):
         await self.auth_service.delete_auth_session_by_token(session_id)
         await self.auth_service.save_changes()
 
-        # Clear the authentication cookie
+        # clear the authentication cookie
         self._delete_auth_cookie(response)
 
         return {'message': 'Logged out'}

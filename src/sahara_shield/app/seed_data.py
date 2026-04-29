@@ -8,13 +8,20 @@ See https://stackoverflow.com/questions/78493927/how-can-i-batch-create-a-sql-al
 
 import factory
 import factory.fuzzy
+import json
 import random
 from datetime import datetime, timezone, timedelta
 from faker import Faker
 from factory.alchemy import SQLAlchemyModelFactory
-from sahara_shield.app.model.orm import User, ProtectedApp, AppSecurityPolicy
+from sahara_shield.app.model.orm import (
+    User, ProtectedApp, AppSecurityPolicy, 
+    FlaggedRequest, SecurityEvent,
+)
 from sahara_shield.app.core.security import password_sec_measure
-from sahara_shield.app.model.enums import HTTPMethods, PolicyModes
+from sahara_shield.app.model.enums import (
+    HTTPMethods, PolicyModes, ThreatTypes, 
+    ThreatSeverities, SecurityActions,
+)
 
 DEFAULT_PASSWORD = 'sahara123!'
 ROUTE_PATTERN_PLACEHOLDERS = [
@@ -24,6 +31,72 @@ ROUTE_PATTERN_PLACEHOLDERS = [
     '{email}',
 ]
 fake = Faker()
+
+def make_random_query_string() -> str | None:
+    if random.randint(1, 4) == 1:
+        return None
+
+    params: dict[str, str] = {}
+    for _ in range(random.randint(1, 4)):
+        key = fake.word()
+        value = random.choice([
+            fake.word(),
+            str(random.randint(1, 1000)),
+            fake.uuid4(),
+        ])
+        params[key] = value
+
+    return '&'.join(f'{key}={value}' for key, value in params.items())
+
+def make_random_http_headers() -> dict[str, str] | None:
+    if random.randint(1, 5) == 1:
+        return None
+
+    headers: dict[str, str] = {
+        'User-Agent': fake.user_agent(),
+        'Accept': random.choice([
+            'application/json',
+            'text/html',
+            '*/*',
+        ]),
+    }
+
+    if random.randint(1, 2) == 1:
+        headers['Content-Type'] = random.choice([
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'text/plain',
+        ])
+
+    if random.randint(1, 3) == 1:
+        headers['X-Request-Id'] = fake.uuid4()
+
+    if random.randint(1, 3) == 1:
+        headers['X-Forwarded-For'] = fake.ipv4_public()
+
+    return headers
+
+def make_random_http_body() -> str | None:
+    if random.randint(1, 3) == 1:
+        return None
+
+    body_kind = random.choice(['json', 'text', 'form'])
+
+    if body_kind == 'json':
+        return json.dumps({
+            fake.word(): fake.sentence(),
+            fake.word(): random.randint(0, 1000),
+            fake.word(): random.choice([True, False]),
+        })
+
+    if body_kind == 'form':
+        return '&'.join([
+            f'{fake.word()}={fake.word()}',
+            f'{fake.word()}={random.randint(1, 100)}',
+            f'{fake.word()}={fake.uuid4()}',
+        ])
+
+    return fake.paragraph()
 
 class UserFactory(SQLAlchemyModelFactory):
     '''
@@ -86,6 +159,59 @@ class AppSecurityPolicyFactory(SQLAlchemyModelFactory):
         datetime(2022, 1, 1, tzinfo=timezone.utc), 
         end_dt=datetime(2026, 1, 1, tzinfo=timezone.utc),
         )
+
+class FlaggedRequestFactory(SQLAlchemyModelFactory):
+    '''
+    Factory for creating seed flagged requests.
+    '''
+
+    class Meta:
+        model = FlaggedRequest
+
+    id = factory.Faker('pyint', min_value=1)
+    app_security_policy_id = factory.Faker('pyint', min_value=1)
+    observed_at = factory.fuzzy.FuzzyDateTime(
+        datetime(2022, 1, 1, tzinfo=timezone.utc), 
+        end_dt=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+    http_method = factory.fuzzy.FuzzyChoice(HTTPMethods)
+    query_string = factory.LazyFunction(make_random_query_string)
+    route_path = factory.LazyFunction(
+        lambda: (
+            f'{fake.url()}api/v{random.randint(1, 1000)}/'
+            f'{fake.word()}/'
+            f'{fake.word() if random.randint(1, 3) == 1 else random.randint(1, 1000)}'
+        )
+    )
+    headers = factory.LazyFunction(make_random_http_headers)
+    body = factory.LazyFunction(make_random_http_body)
+    source_ip = factory.Faker('ipv4_public')
+    created_at = factory.LazyAttribute(lambda obj: fake.date_time_between_dates(
+        datetime_start=obj.observed_at, 
+        datetime_end=obj.observed_at + timedelta(minutes=1), 
+        tzinfo=timezone.utc),
+    )
+
+class SecurityEventFactory(SQLAlchemyModelFactory):
+    '''
+    Factory for creating seed security events.
+    '''
+
+    class Meta:
+        model = SecurityEvent
+
+    id = factory.Faker('pyint', min_value=1)
+    flagged_request_id = factory.Faker('pyint', min_value=1)
+    threat_type = factory.fuzzy.FuzzyChoice(ThreatTypes)
+    threat_severity = factory.fuzzy.FuzzyChoice(ThreatSeverities)
+    confidence_pct = factory.Faker('pyint', min_value=0, max_value=100)
+    risk_score = factory.Faker('pyint', min_value=0, max_value=100)
+    action = factory.fuzzy.FuzzyChoice(SecurityActions)
+    reason_desc = factory.LazyFunction(lambda: fake.sentence(nb_words=15))
+    created_at = factory.fuzzy.FuzzyDateTime(
+        datetime(2022, 1, 1, tzinfo=timezone.utc), 
+        end_dt=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
     
 def generate_seed_users(n:int=10) -> list[User]:
     '''
@@ -141,3 +267,63 @@ def generate_seed_app_security_policies(n:int=10, protected_apps:list[ProtectedA
         unchosen_app_security_policies = unchosen_app_security_policies - set([app_security_policy])
 
     return app_security_policies
+
+def generate_seed_flagged_requests(n:int=10, app_security_policies:list[AppSecurityPolicy]=[]) -> list[FlaggedRequest]:
+    '''
+    Generates n seed flagged request instances.
+
+    Args:
+        n (int): The number of flagged request instances to generate.
+        app_security_policies (list): A list of app security policy objects to associate with.
+    Returns:
+        flagged_requests (list): A list of n flagged request instances.
+    '''
+    flagged_requests: list[FlaggedRequest] = FlaggedRequestFactory.build_batch(n)
+
+    if not app_security_policies: return flagged_requests # no app security policy objects provided, return flagged requests as-is
+
+    unchosen_flagged_requests = set(flagged_requests)
+    while unchosen_flagged_requests:
+        # randomly choose an app security policy
+        app_security_policy = random.choice(app_security_policies)
+
+        # randomly choose flagged request
+        flagged_request = random.choice(list(unchosen_flagged_requests))
+
+        # associate flagged request w/ app security policy
+        flagged_request.app_security_policy_id = app_security_policy.id
+
+        # remove chosen flagged request so it's not picked again
+        unchosen_flagged_requests = unchosen_flagged_requests - set([flagged_request])
+
+    return flagged_requests
+
+def generate_seed_security_events(n:int=10, flagged_requests:list[FlaggedRequest]=[]) -> list[SecurityEvent]:
+    '''
+    Generates n seed security event instances.
+
+    Args:
+        n (int): The number of security event instances to generate.
+        flagged_requests (list): A list of flagged request objects to associate with.
+    Returns:
+        security_events (list): A list of n security event instances.
+    '''
+    security_events: list[SecurityEvent] = SecurityEventFactory.build_batch(n)
+
+    if not flagged_requests: return security_events # no flagged request objects provided, return security events as-is
+
+    unchosen_security_events = set(security_events)
+    while unchosen_security_events:
+        # randomly choose a flagged request
+        flagged_request = random.choice(flagged_requests)
+
+        # randomly choose security event
+        security_event = random.choice(list(unchosen_security_events))
+
+        # associate security event w/ flagged request
+        security_event.flagged_request_id = flagged_request.id
+
+        # remove chosen security event so it's not picked again
+        unchosen_security_events = unchosen_security_events - set([security_event])
+
+    return security_events

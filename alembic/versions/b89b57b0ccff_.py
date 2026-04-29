@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 907b9a8e9f56
+Revision ID: b89b57b0ccff
 Revises: 
-Create Date: 2026-04-28 16:05:56.492474
+Create Date: 2026-04-29 16:54:30.612803
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '907b9a8e9f56'
+revision: str = 'b89b57b0ccff'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -50,7 +50,8 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['owner_user_id'], ['users.id'], name=op.f('fk_protected_apps_owner_user_id_users')),
-    sa.PrimaryKeyConstraint('id', name=op.f('pk_protected_apps'))
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_protected_apps')),
+    sa.UniqueConstraint('owner_user_id', 'name', 'url', name=op.f('uq_protected_apps_owner_user_id'))
     )
     op.create_table('app_security_policies',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -71,7 +72,7 @@ def upgrade() -> None:
     )
     op.create_table('flagged_requests',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('protected_app_id', sa.Integer(), nullable=False),
+    sa.Column('app_security_policy_id', sa.Integer(), nullable=False),
     sa.Column('observed_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('http_method', sa.Enum('GET', 'POST', 'PUT', 'PATCH', 'DELETE', name='httpmethods'), nullable=False),
     sa.Column('route_path', sa.String(length=255), nullable=False),
@@ -81,15 +82,13 @@ def upgrade() -> None:
     sa.Column('source_ip', sa.String(length=255), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
-    sa.ForeignKeyConstraint(['protected_app_id'], ['protected_apps.id'], name=op.f('fk_flagged_requests_protected_app_id_protected_apps')),
+    sa.ForeignKeyConstraint(['app_security_policy_id'], ['app_security_policies.id'], name=op.f('fk_flagged_requests_app_security_policy_id_app_security_policies')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_flagged_requests'))
     )
     op.create_table('security_events',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('flagged_request_id', sa.Integer(), nullable=False),
-    sa.Column('app_security_policy_id', sa.Integer(), nullable=False),
-    sa.Column('detected_by', sa.String(length=255), nullable=False),
-    sa.Column('threat_type', sa.Enum('NONE', 'LOW', 'MODERATE', 'HIGH', 'CRITICAL', name='threatseverities'), nullable=False),
+    sa.Column('threat_type', sa.Enum('NONE', 'UNKNOWN', 'SQLi', 'XSS', 'PATH_TRAVERSAL', name='threattypes'), nullable=False),
     sa.Column('threat_severity', sa.Enum('NONE', 'LOW', 'MODERATE', 'HIGH', 'CRITICAL', name='threatseverities'), nullable=False),
     sa.Column('confidence_pct', sa.Integer(), nullable=False),
     sa.Column('risk_score', sa.Integer(), nullable=False),
@@ -99,7 +98,6 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.CheckConstraint('confidence_pct >= 0 AND confidence_pct <= 100', name=op.f('ck_security_events_confidence_pct_range')),
     sa.CheckConstraint('risk_score >= 0 AND risk_score <= 100', name=op.f('ck_security_events_risk_score_range')),
-    sa.ForeignKeyConstraint(['app_security_policy_id'], ['app_security_policies.id'], name=op.f('fk_security_events_app_security_policy_id_app_security_policies')),
     sa.ForeignKeyConstraint(['flagged_request_id'], ['flagged_requests.id'], name=op.f('fk_security_events_flagged_request_id_flagged_requests')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_security_events'))
     )

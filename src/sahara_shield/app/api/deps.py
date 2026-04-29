@@ -10,16 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sahara_shield.app.core.db import db_session_mngr
 from sahara_shield.app.core.config import app_settings
 from sahara_shield.app.model.services import (
-    ReadUsersService, 
-    UserAuthService, 
-    CurrentUserService,
+    ReadUsersService, UserAuthService, CurrentUserService,
 )
 from sahara_shield.app.model.services import (
-    ReadProtectedAppsService, 
-    ReadAppSecurityPoliciesService, 
+    ReadProtectedAppsService, ReadAppSecurityPoliciesService, 
     CreateProtectedAppService,
 )
-from sahara_shield.app.controllers import ProtectedAppController, AuthController, AppSecurityPolicyController
+from sahara_shield.app.controllers import (
+    ProtectedAppController, AuthController, 
+    AppSecurityPolicyController,
+)
 from sahara_shield.app.model.orm import User
 
 def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
@@ -135,9 +135,9 @@ def get_protected_app_controller(
 def get_app_security_policy_controller(
     read_app_security_policies_service: ReadAppSecurityPoliciesService = Depends(get_read_app_security_policies_service),
 ) -> AppSecurityPolicyController:
-    """
+    '''
     Dependency injection function that provides an AppSecurityPolicyController instance.
-    """
+    '''
     return AppSecurityPolicyController(read_app_security_policies_service)
 
 def get_auth_controller(
