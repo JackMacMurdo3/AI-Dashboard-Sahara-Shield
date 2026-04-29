@@ -9,9 +9,12 @@ from fastapi import HTTPException, Response
 from sahara_shield.app.model.services import (
     CreateProtectedAppService, ReadProtectedAppsService,
     ReadAppSecurityPoliciesService, UserAuthService,
+    ReadFlaggedRequestsService, ReadSecurityEventsService,
 )
 from sahara_shield.app.model.marshal import ProtectedAppSchema
 from sahara_shield.app.model.marshal import AppSecurityPolicySchema
+from sahara_shield.app.model.marshal import FlaggedRequestSchema
+from sahara_shield.app.model.marshal import SecurityEventSchema
 from sahara_shield.app.model.orm import User
 from sahara_shield.app.core.config import AppSettings
 
@@ -93,6 +96,38 @@ class AppSecurityPolicyController(Controller):
         '''
         policies = await self.read_service.read_by_user_id(user.id)
         return self.schema.dump(policies, many=True)
+
+class FlaggedRequestsController(Controller):
+    '''
+    Orchestrates flagged request operations.
+    '''
+
+    def __init__(self, read_flagged_requests_service: ReadFlaggedRequestsService):
+        self.read_service = read_flagged_requests_service
+        self.schema = FlaggedRequestSchema(load_instance=False)
+
+    async def get_user_flagged_requests(self, user: User):
+        '''
+        Retrieve flagged requests for the user's protected apps.
+        '''
+        flagged_requests = await self.read_service.read_by_user_id(user.id)
+        return self.schema.dump(flagged_requests, many=True)
+
+class SecurityEventsController(Controller):
+    '''
+    Orchestrates security event operations.
+    '''
+
+    def __init__(self, read_security_events_service: ReadSecurityEventsService):
+        self.read_service = read_security_events_service
+        self.schema = SecurityEventSchema(load_instance=False)
+
+    async def get_user_security_events(self, user: User):
+        '''
+        Retrieve security events for the user's protected apps.
+        '''
+        events = await self.read_service.read_by_user_id(user.id)
+        return self.schema.dump(events, many=True)
 
 class AuthController(Controller):
     '''

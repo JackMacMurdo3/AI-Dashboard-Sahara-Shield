@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import timedelta
 from sahara_shield.app.model.orm import (
     User, AuthSession, ProtectedApp, 
-    AppSecurityPolicy,
+    AppSecurityPolicy, FlaggedRequest, SecurityEvent,
 )
 from sahara_shield.app.core.security import password_sec_measure
 
@@ -84,11 +84,69 @@ class ReadAppSecurityPoliciesService(Service):
 
     async def read_by_user_id(self, user_id:int):
         stmt = (
+            # SELECT * FROM app_security_policies (only keep rows from left table, none from right table)
+            select(AppSecurityPolicy)
             # app_security_policies = left table, protected_apps = right table
-            select(AppSecurityPolicy) # SELECT * FROM app_security_policies (only keep rows from left table, none from right table)
-            .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id) # LEFT JOIN protected_apps ON app_security_policies.protected_app_id = protected_apps.id
-            .where(ProtectedApp.owner_user_id == user_id) # WHERE protected_apps.user_id = user_id
+            # LEFT JOIN protected_apps ON app_security_policies.protected_app_id = protected_apps.id
+            .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id)
+            # WHERE protected_apps.user_id = user_id
+            .where(ProtectedApp.owner_user_id == user_id)
             )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.scalars().all()
+
+        return rows
+
+class ReadFlaggedRequestsService(Service):
+    '''
+    Asynchronously retrieve flagged requests from the database.
+    '''
+
+    async def read_by_user_id(self, user_id: int):
+        stmt = (
+            # SELECT * FROM flagged_requests
+            select(FlaggedRequest)
+            # flagged_requests = left table, app_security_policies = right table
+            # LEFT JOIN app_security_policies ON flagged_requests.app_security_policy_id = app_security_policies.id
+            .join(
+                AppSecurityPolicy,
+                FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id,
+            )
+            # result of prior join (prior_join) = left table, protected_apps = right table
+            # LEFT JOIN protected_apps ON prior_join.protected_app_id = protected_apps.id
+            .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id)
+            # WHERE protected_apps.owner_user_id = user_id
+            .where(ProtectedApp.owner_user_id == user_id)
+        )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.scalars().all()
+
+        return rows
+
+class ReadSecurityEventsService(Service):
+    '''
+    Asynchronously retrieve security events related to flagged requests for a user's protected apps.
+    '''
+
+    async def read_by_user_id(self, user_id: int):
+        stmt = (
+            # SELECT * FROM security_events
+            select(SecurityEvent)
+            # security_events = left table, flagged_requests = right table
+            .join(FlaggedRequest, SecurityEvent.flagged_request_id == FlaggedRequest.id)
+            # prior join = left table, app_security_policies = right table
+            .join(
+                AppSecurityPolicy,
+                FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id,
+            )
+            # join protected_apps to filter by owner
+            .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id)
+            .where(ProtectedApp.owner_user_id == user_id)
+        )
 
         res: Result = await self.db_session.execute(stmt)
 

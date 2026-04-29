@@ -14,11 +14,11 @@ from sahara_shield.app.model.services import (
 )
 from sahara_shield.app.model.services import (
     ReadProtectedAppsService, ReadAppSecurityPoliciesService, 
-    CreateProtectedAppService,
+    CreateProtectedAppService, ReadFlaggedRequestsService, ReadSecurityEventsService,
 )
 from sahara_shield.app.controllers import (
     ProtectedAppController, AuthController, 
-    AppSecurityPolicyController,
+    AppSecurityPolicyController, FlaggedRequestsController, SecurityEventsController,
 )
 from sahara_shield.app.model.orm import User
 
@@ -75,6 +75,12 @@ def get_create_protected_app_service(db_session:AsyncSession=Depends(db_session_
 
 def get_read_app_security_policies_service(db_session:AsyncSession=Depends(db_session_mngr)):
     return ReadAppSecurityPoliciesService(db_session)
+
+def get_read_flagged_requests_service(db_session:AsyncSession=Depends(db_session_mngr)):
+    return ReadFlaggedRequestsService(db_session)
+
+def get_read_security_events_service(db_session:AsyncSession=Depends(db_session_mngr)):
+    return ReadSecurityEventsService(db_session)
 
 async def get_current_user(
         session_id:str=Cookie(default=''), 
@@ -140,6 +146,22 @@ def get_app_security_policy_controller(
     '''
     return AppSecurityPolicyController(read_app_security_policies_service)
 
+def get_flagged_requests_controller(
+    read_flagged_requests_service: ReadFlaggedRequestsService = Depends(get_read_flagged_requests_service),
+) -> FlaggedRequestsController:
+    '''
+    Dependency injection function that provides a FlaggedRequestsController instance.
+    '''
+    return FlaggedRequestsController(read_flagged_requests_service)
+
+def get_security_events_controller(
+    read_security_events_service: ReadSecurityEventsService = Depends(get_read_security_events_service),
+) -> SecurityEventsController:
+    '''
+    Dependency injection function that provides a SecurityEventsController instance.
+    '''
+    return SecurityEventsController(read_security_events_service)
+
 def get_auth_controller(
     auth_service: UserAuthService = Depends(get_user_auth_service),
     settings = Depends(get_app_settings),
@@ -156,3 +178,5 @@ CurrentUserDep = Annotated[User, Depends(get_current_user)]
 ProtectedAppControllerDep = Annotated[ProtectedAppController, Depends(get_protected_app_controller)]
 AuthControllerDep = Annotated[AuthController, Depends(get_auth_controller)]
 AppSecurityPolicyControllerDep = Annotated[AppSecurityPolicyController, Depends(get_app_security_policy_controller)]
+FlaggedRequestsControllerDep = Annotated[FlaggedRequestsController, Depends(get_flagged_requests_controller)]
+SecurityEventsControllerDep = Annotated[SecurityEventsController, Depends(get_security_events_controller)]
