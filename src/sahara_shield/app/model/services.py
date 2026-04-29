@@ -1,8 +1,17 @@
+'''
+Service layer in MVC architecture.
+'''
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, Result
 from sqlalchemy.exc import IntegrityError
 from datetime import timedelta
-from sahara_shield.app.model.orm import User, AuthSession, ProtectedApp, AppSecurityPolicy
+from sahara_shield.app.model.orm import (
+    User, 
+    AuthSession, 
+    ProtectedApp, 
+    AppSecurityPolicy,
+)
 from sahara_shield.app.core.security import password_sec_measure
 
 class Service():

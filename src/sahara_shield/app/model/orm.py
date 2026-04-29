@@ -8,8 +8,19 @@ import uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Mapper, column_property, validates
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy import JSON
-from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Boolean, select, func, text, CheckConstraint, UniqueConstraint, Text, Index
-from sahara_shield.app.model.enums import UserRoles, HTTPMethods, PolicyModes, ThreatSeverities, SecurityActions, ThreatTypes
+from sqlalchemy import (
+    Integer, String, Enum, DateTime, ForeignKey, Boolean, Text, Index,
+    select, func, text, 
+    CheckConstraint, UniqueConstraint, 
+)
+from sahara_shield.app.model.enums import (
+    UserRoles, 
+    HTTPMethods, 
+    PolicyModes, 
+    ThreatSeverities, 
+    SecurityActions, 
+    ThreatTypes,
+)
 from datetime import datetime, timezone
 from sqlalchemy.inspection import inspect
 from sqlalchemy import event
