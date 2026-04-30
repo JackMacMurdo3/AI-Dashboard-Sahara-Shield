@@ -13,6 +13,17 @@ async def read_my_protected_apps(user: CurrentUserDep, controller: ProtectedAppC
     '''
     return await controller.get_user_protected_apps(user)
 
+@protected_apps_router.get('/me/{id}')
+async def read_my_protected_app_by_id(
+    id: int,
+    user: CurrentUserDep,
+    controller: ProtectedAppControllerDep,
+):
+    '''
+    Retrieve a protected app by ID owned by the current user.
+    '''
+    return await controller.get_user_protected_app_by_id(user, id)
+
 @protected_apps_router.post('/me')
 async def create_protected_app(
     user: CurrentUserDep,

@@ -1,44 +1,36 @@
 const form = document.getElementById('login-form');
-const msgEl = document.getElementById('login-msg');
+const errorMessage = document.getElementById('login-error');
+const submitButton = document.getElementById('login-button');
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
+  errorMessage.textContent = '';
+  submitButton.disabled = true;
 
-  const email = String(form.email.value || '').trim();
-  const password = String(form.password.value || '');
-
-  if (!email || !password) {
-    msgEl.className = 'login-msg error';
-    msgEl.textContent = 'Please enter both email and password.';
-    return;
-  }
-
-  // lets the user know we're trying to send the provided credentials
-  // to the server for authentication
-  msgEl.className = 'login-msg';
-  msgEl.textContent = 'Signing in...';
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
 
   try {
-    const params = new URLSearchParams({ email, password }); // build query string of user-provided credentials
-    // send async POST request to auth/login endpoint
-    const response = await fetch('/api/v1/auth/login?' + params.toString(), {
+    const query = new URLSearchParams({ email, password }); // our login endpoint expects credentials as query params
+    // send http post request to our login endpoint
+    const response = await fetch(`/api/v1/auth/login?${query.toString()}`, {
       method: 'POST',
+      credentials: 'include',
     });
 
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.detail || 'Invalid credentials.');
+      // server gave us an error after querying the api endpoint
+      const payload = await response.json().catch(() => ({})); // lambda function that returns empty object if json parsing fails
+      throw new Error(payload.detail || 'Login failed');
     }
 
-    // log in succesful - redirect to root (/)
-    // this should take user to the dashboard page
-    msgEl.className = 'login-msg success';
-    msgEl.textContent = 'Login successful. Redirecting...';
-    window.location.href = '/';
+    window.location.href = '/'; // login successful, redirect user to index.html
   } catch (error) {
-    // this happens e.g. when server takes too long to authenticate credentials and return a response
-    // let the user something went wrong on the server-side
-    msgEl.className = 'login-msg error';
-    msgEl.textContent = 'Unable to login. Please try again later.';
+    // should only happen if we hit the api endpoint but
+    // didn't hear anything from the server
+    errorMessage.textContent = error.message;
+  } finally {
+    // login succeeded, enable submit button
+    submitButton.disabled = false;
   }
 });

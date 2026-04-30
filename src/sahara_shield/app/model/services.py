@@ -57,6 +57,18 @@ class ReadProtectedAppsService(Service):
 
         return info
 
+    async def read_by_id_and_owner_user_id(self, id:int, owner_user_id:int):
+        stmt = select(ProtectedApp).where(
+            ProtectedApp.id == id,
+            ProtectedApp.owner_user_id == owner_user_id,
+        )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        info = res.scalars().one_or_none()
+
+        return info
+
 class CreateProtectedAppService(Service):
     '''
     Asynchronously create new protected apps in the database

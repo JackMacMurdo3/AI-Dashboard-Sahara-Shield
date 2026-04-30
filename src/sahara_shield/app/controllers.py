@@ -79,6 +79,27 @@ class ProtectedAppController(Controller):
         protected_apps = await self.read_service.read_by_owner_user_id(user.id)
         return self.schema.dump(protected_apps, many=True)
 
+    async def get_user_protected_app_by_id(self, user: User, id: int):
+        '''
+        Retrieve a protected app by ID if owned by the user.
+
+        Args:
+            user: Current authenticated user
+            id: Protected app ID
+
+        Returns:
+            Serialized protected app data
+
+        Raises:
+            HTTPException: 404 if app is not found or not owned by the user
+        '''
+        protected_app = await self.read_service.read_by_id_and_owner_user_id(id, user.id)
+
+        if protected_app is None:
+            raise HTTPException(status_code=404, detail='Protected app not found')
+
+        return self.schema.dump(protected_app)
+
     pass
 
 class AppSecurityPolicyController(Controller):

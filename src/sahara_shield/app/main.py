@@ -31,3 +31,14 @@ def login_page():
     '''
 
     return responses.FileResponse('./static/html/login.html')
+
+@app.get('/dashboard/', response_class=responses.FileResponse)
+@app.get('/dashboard/{protected_app_id}', response_class=responses.FileResponse)
+def dashboard_page(user:CurrentUserDep, protected_app_id:int):
+    '''
+    API route to fetch protected app dashboard page HTML
+
+    Protected route - user must be logged in to access
+    '''
+
+    return responses.FileResponse('./static/html/dashboard.html')

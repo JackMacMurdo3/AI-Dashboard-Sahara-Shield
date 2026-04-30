@@ -1,44 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sahara Shield | Login</title>
+    <link rel="stylesheet" href="/static/css/login.css">
+    <script defer src="/static/js/login.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <section class="login-card" aria-labelledby="login-title">
+        <h1 id="login-title">Sahara Shield</h1>
+        <p class="subtitle">Log in to continue.</p>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login | Sahara Shield</title>
-  <link rel="stylesheet" href="/static/css/styles.css" />
-</head>
-
-<body class="login-page">
-  <header>
-    <div class="logo">
-      <div class="logo-dot"></div>
-      WELCOME TO ... SAHARA SHIELD
-    </div>
-  </header>
-
-  <main class="login-shell">
-    <div class="card login-card">
-      <div class="section-title">Authentication</div>
-      <div class="login-title">Sign In</div>
-      <div class="login-subtitle">Enter your credentials to access the dashboard.</div>
-
-      <form id="login-form" class="login-form" novalidate>
-        <div class="form-field">
+        <form id="login-form">
           <label for="email">Email</label>
-          <input id="email" name="email" type="email" autocomplete="email" required placeholder="analyst@company.com" />
-        </div>
+          <input id="email" name="email" type="email" autocomplete="email" required>
 
-        <div class="form-field">
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter password" />
-        </div>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
 
-        <button type="submit" class="find-malware-btn">Login</button>
-        <div id="login-msg" class="login-msg" aria-live="polite"></div>
-      </form>
-    </div>
-  </main>
+          <p id="login-error" class="error" role="alert" aria-live="polite"></p>
 
-  <script src="/static/js/login.js"></script>
-</body>
+          <button id="login-button" type="submit">Log in</button>
+        </form>
+      </section>
+    </main>
+  </body>
 </html>

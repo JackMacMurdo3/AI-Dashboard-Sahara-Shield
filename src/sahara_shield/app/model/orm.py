@@ -5,21 +5,21 @@ This module defines the SQLAlchemy mapped classes which are used for persisting 
 '''
 
 import uuid
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Mapper, column_property, validates
+from sqlalchemy.orm import (
+    DeclarativeBase, Mapped, mapped_column, 
+    Mapper, column_property, validates,
+)
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy import JSON
 from sqlalchemy import (
-    Integer, String, Enum, DateTime, ForeignKey, Boolean, Text, Index,
+    Integer, String, Enum, DateTime, ForeignKey,
+    Boolean, Text, Index,
     select, func, text, 
     CheckConstraint, UniqueConstraint, 
 )
 from sahara_shield.app.model.enums import (
-    UserRoles, 
-    HTTPMethods, 
-    PolicyModes, 
-    ThreatSeverities, 
-    SecurityActions, 
-    ThreatTypes,
+    UserRoles, HTTPMethods, PolicyModes, 
+    ThreatSeverities, SecurityActions, ThreatTypes,
 )
 from datetime import datetime, timezone
 from sqlalchemy.inspection import inspect
@@ -119,6 +119,39 @@ class ProtectedApp(Base):
 
     def is_live(self) -> bool:
         return self.live
+    
+    @classmethod
+    def __declare_last__(cls):
+        # configure correlated subquery derived field after all mappers are ready so all mappers are defined w/o reordering
+        # otherwise e.g. Scan hasn't been defined yet and we get an error
+        # see https://docs.sqlalchemy.org/en/21/orm/mapped_sql_expr.html#using-column-property
+        
+        cls.app_security_policies_count = column_property(
+            select(func.count(AppSecurityPolicy.id))
+            .select_from(AppSecurityPolicy)
+            .where(AppSecurityPolicy.protected_app_id == cls.id)
+            .correlate_except(AppSecurityPolicy)
+            .scalar_subquery()
+        )
+
+        cls.flagged_requests_count = column_property(
+            select(func.count(FlaggedRequest.id))
+            .select_from(FlaggedRequest)
+            .join(AppSecurityPolicy, FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id)
+            .where(AppSecurityPolicy.protected_app_id == cls.id)
+            .correlate_except(FlaggedRequest, AppSecurityPolicy)
+            .scalar_subquery()
+        )
+
+        cls.security_events_count = column_property(
+            select(func.count(SecurityEvent.id))
+            .select_from(SecurityEvent)
+            .join(FlaggedRequest, SecurityEvent.flagged_request_id == FlaggedRequest.id)
+            .join(AppSecurityPolicy, FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id)
+            .where(AppSecurityPolicy.protected_app_id == cls.id)
+            .correlate_except(SecurityEvent, FlaggedRequest, AppSecurityPolicy)
+            .scalar_subquery()
+        )
     
 class AppSecurityPolicy(Base):
     '''
