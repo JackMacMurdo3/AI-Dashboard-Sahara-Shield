@@ -132,6 +132,24 @@ class AppSecurityPolicyController(Controller):
         policies = await self.read_service.read_by_user_id(user.id)
         return self.schema.dump(policies, many=True)
 
+    async def get_user_app_security_policy_by_id(self, user: User, id: int):
+        '''
+        Retrieve a single app security policy belonging to the user's protected apps.
+        '''
+        policy = await self.read_service.read_by_id_and_user_id(id, user.id)
+
+        if policy is None:
+            raise HTTPException(status_code=404, detail='App security policy not found')
+
+        return self.schema.dump(policy)
+
+    async def get_user_app_security_policies_by_protected_app_id(self, user: User, protected_app_id: int):
+        '''
+        Retrieve app security policies for one protected app owned by the current user.
+        '''
+        policies = await self.read_service.read_by_protected_app_id_and_user_id(protected_app_id, user.id)
+        return self.schema.dump(policies, many=True)
+
 class FlaggedRequestsController(Controller):
     '''
     Orchestrates flagged request operations.

@@ -124,6 +124,35 @@ class ReadAppSecurityPoliciesService(Service):
 
         return rows
 
+    async def read_by_id_and_user_id(self, id: int, user_id: int):
+        stmt = (
+            select(AppSecurityPolicy)
+            .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id)
+            .where(AppSecurityPolicy.id == id)
+            .where(ProtectedApp.owner_user_id == user_id)
+        )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        row = res.scalars().one_or_none()
+
+        return row
+
+    async def read_by_protected_app_id_and_user_id(self, protected_app_id: int, user_id: int):
+        stmt = (
+            select(AppSecurityPolicy)
+            .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id)
+            .where(AppSecurityPolicy.protected_app_id == protected_app_id)
+            .where(ProtectedApp.owner_user_id == user_id)
+            .order_by(AppSecurityPolicy.priority.asc(), AppSecurityPolicy.id.asc())
+        )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.scalars().all()
+
+        return rows
+
 class ReadFlaggedRequestsService(Service):
     '''
     Asynchronously retrieve flagged requests from the database.
