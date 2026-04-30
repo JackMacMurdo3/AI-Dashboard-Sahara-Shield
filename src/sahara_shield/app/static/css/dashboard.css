@@ -8,18 +8,27 @@ body {
 .page {
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
+  flex-direction: column;
+}
+
+.tab-navigation {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e5e7eb;
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
 }
 
 .app-dashboard {
-  width: 100%;
+  flex: 1;
   max-width: 720px;
+  width: 100%;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-top: none;
   padding: 1.25rem;
+  margin: 0 auto;
 }
 
 .back-link {
@@ -76,4 +85,41 @@ body {
   min-height: 1.2rem;
   margin-top: 1rem;
   color: #b91c1c;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #4b5563;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.tab-button:hover {
+  background: #fafafa;
+  color: #1d1d21;
+}
+
+.tab-button.active {
+  border-bottom-color: #0066cc;
+  color: #0066cc;
+  background: transparent;
+}
+
+.tab-content {
+  margin-top: 1rem;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
 }

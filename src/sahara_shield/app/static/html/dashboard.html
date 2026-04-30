@@ -9,13 +9,36 @@
   </head>
   <body>
     <main class="page">
+      <nav class="tab-navigation" role="tablist">
+        <button class="tab-button active" role="tab" aria-selected="true" aria-controls="overview-panel" data-tab="overview">Overview</button>
+        <button class="tab-button" role="tab" aria-selected="false" aria-controls="policies-panel" data-tab="policies">Security Policies</button>
+        <button class="tab-button" role="tab" aria-selected="false" aria-controls="events-panel" data-tab="events">Security Events</button>
+        <button class="tab-button" role="tab" aria-selected="false" aria-controls="requests-panel" data-tab="requests">Flagged Requests</button>
+      </nav>
+
       <section class="app-dashboard" aria-labelledby="dashboard-title">
         <a href="/" class="back-link">← Back to Apps</a>
 
         <h1 id="dashboard-title">Protected App</h1>
         <p id="app-subtitle" class="app-subtitle"></p>
 
-        <div id="app-info" class="app-info" aria-live="polite"></div>
+        <div class="tab-content">
+          <section id="overview-panel" class="tab-panel active" role="tabpanel" aria-labelledby="overview-tab">
+            <div id="app-info" class="app-info" aria-live="polite"></div>
+          </section>
+
+          <section id="policies-panel" class="tab-panel" role="tabpanel" aria-labelledby="policies-tab" hidden>
+            <!-- Security Policies content will go here -->
+          </section>
+
+          <section id="events-panel" class="tab-panel" role="tabpanel" aria-labelledby="events-tab" hidden>
+            <!-- Security Events content will go here -->
+          </section>
+
+          <section id="requests-panel" class="tab-panel" role="tabpanel" aria-labelledby="requests-tab" hidden>
+            <!-- Flagged Requests content will go here -->
+          </section>
+        </div>
 
         <p id="error-message" class="error" role="alert" aria-live="polite"></p>
       </section>

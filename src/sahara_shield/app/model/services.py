@@ -166,6 +166,29 @@ class ReadSecurityEventsService(Service):
 
         return rows
     
+    async def read_by_user_id_and_protected_app_id(self, user_id:int, protected_app_id:int):
+        stmt = (
+            # SELECT * FROM security_events
+            select(SecurityEvent)
+            # security_events = left table, flagged_requests = right table
+            .join(FlaggedRequest, SecurityEvent.flagged_request_id == FlaggedRequest.id)
+            # prior join = left table, app_security_policies = right table
+            .join(
+                AppSecurityPolicy,
+                FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id,
+            )
+            # join protected_apps to filter by owner
+            .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id)
+            .where(ProtectedApp.owner_user_id == user_id)
+            .where(ProtectedApp.id == protected_app_id)
+        )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.scalars().all()
+
+        return rows
+        
 class UserAuthService(Service):
     async def authenticate(self, email:str, password:str):
         '''

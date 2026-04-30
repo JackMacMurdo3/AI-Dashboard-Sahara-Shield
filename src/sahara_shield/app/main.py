@@ -34,9 +34,9 @@ def login_page():
 
 @app.get('/dashboard/', response_class=responses.FileResponse)
 @app.get('/dashboard/{protected_app_id}', response_class=responses.FileResponse)
-def dashboard_page(user:CurrentUserDep, protected_app_id:int):
+def dashboard_home_page(user:CurrentUserDep, protected_app_id:int):
     '''
-    API route to fetch protected app dashboard page HTML
+    API route to fetch protected app dashboard home (landing) page HTML
 
     Protected route - user must be logged in to access
     '''

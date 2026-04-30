@@ -149,6 +149,13 @@ class SecurityEventsController(Controller):
         '''
         events = await self.read_service.read_by_user_id(user.id)
         return self.schema.dump(events, many=True)
+    
+    async def get_user_protected_app_security_events(self, user:User, protected_app_id:int):
+        '''
+        Retrieve security events for a specific protected app belonging to the user.
+        '''
+        events = await self.read_service.read_by_user_id_and_protected_app_id(user.id, protected_app_id)
+        return self.schema.dump(events, many=True)
 
 class AuthController(Controller):
     '''

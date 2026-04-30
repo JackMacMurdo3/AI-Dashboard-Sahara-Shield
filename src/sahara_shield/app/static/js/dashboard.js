@@ -86,4 +86,37 @@ async function loadProtectedAppDashboard() {
   }
 }
 
+function initializeTabs() {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabPanels = document.querySelectorAll('.tab-panel');
+
+  tabButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      // remove active state from all buttons and panels
+      tabButtons.forEach((btn) => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+      });
+
+      tabPanels.forEach((panel) => {
+        panel.classList.remove('active');
+        panel.setAttribute('hidden', '');
+      });
+
+      // set active state on clicked button and corresponding panel
+      button.classList.add('active');
+      button.setAttribute('aria-selected', 'true');
+
+      const tabName = button.getAttribute('data-tab');
+      const correspondingPanel = document.getElementById(`${tabName}-panel`);
+
+      if (correspondingPanel) {
+        correspondingPanel.classList.add('active');
+        correspondingPanel.removeAttribute('hidden');
+      }
+    });
+  });
+}
+
 loadProtectedAppDashboard();
+initializeTabs();
