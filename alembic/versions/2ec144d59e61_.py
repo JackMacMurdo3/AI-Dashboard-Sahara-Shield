@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 058430ac2e43
+Revision ID: 2ec144d59e61
 Revises: 
-Create Date: 2026-04-30 15:39:28.801405
+Create Date: 2026-04-30 18:04:52.784025
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '058430ac2e43'
+revision: str = '2ec144d59e61'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -61,6 +61,7 @@ def upgrade() -> None:
     op.create_table('app_security_policies',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('protected_app_id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('http_method', sa.Enum('GET', 'POST', 'PUT', 'PATCH', 'DELETE', name='httpmethods'), nullable=False),
     sa.Column('route_pattern', sa.String(length=255), nullable=False),
     sa.Column('mode', sa.Enum('MONITOR', 'ENFORCE', name='policymodes'), nullable=False),

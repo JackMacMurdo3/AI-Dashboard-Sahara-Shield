@@ -149,6 +149,7 @@ class AppSecurityPolicyFactory(SQLAlchemyModelFactory):
 
     id = factory.Sequence(lambda n: n + 1)
     protected_app_id = factory.Faker('pyint', min_value=1)
+    name = factory.LazyFunction(lambda: f'Policy #{random.randint(1, 1000)}')
     http_method = factory.fuzzy.FuzzyChoice(HTTPMethods)
     route_pattern = factory.LazyFunction(
         lambda: (

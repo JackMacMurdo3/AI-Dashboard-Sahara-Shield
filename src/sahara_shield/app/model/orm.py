@@ -214,6 +214,7 @@ class AppSecurityPolicy(Base):
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
     protected_app_id: Mapped[int] = mapped_column(ForeignKey('protected_apps.id'))
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default=lambda: f'New Policy {datetime.now(tz=timezone.utc)}')
     http_method: Mapped[HTTPMethods] = mapped_column(Enum(HTTPMethods), nullable=False)
     route_pattern: Mapped[str] = mapped_column(String(255), nullable=False)
     mode: Mapped[PolicyModes] = mapped_column(Enum(PolicyModes), nullable=False, default=PolicyModes.MONITOR)

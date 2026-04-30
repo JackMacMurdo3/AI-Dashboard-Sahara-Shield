@@ -152,9 +152,12 @@ async def insert_seed_data(
 async def main(args:Namespace):
     import factory.random
     import random
+    from faker import Faker
+
     # fix the randomness for reproducibility
     factory.random.reseed_random(args.seed)
     random.seed(args.seed)
+    Faker.seed(args.seed)
 
     await insert_seed_data(
         args.n_users,
