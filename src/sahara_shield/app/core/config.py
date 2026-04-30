@@ -34,9 +34,6 @@ class AppSettings(BaseSettings):
     PASSWORD_MIN_LEN: int = 12
     PASSWORD_MAX_LEN: int = 64
 
-    SEC_POLICY_RISK_SCORE_W1: float = 0.6
-    SEC_POLICY_RISK_SCORE_W2: float = 0.4
-
     def make_mysql_db_url(self) -> str:
         '''
         Creates a MySQL database URL string from configuration information

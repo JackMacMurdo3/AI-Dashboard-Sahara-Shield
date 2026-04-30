@@ -12,7 +12,8 @@ from sqlalchemy.orm import (
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy import JSON
 from sqlalchemy import (
-    Integer, String, Enum, DateTime, ForeignKey,
+    Integer, String, Enum, 
+    DateTime, ForeignKey, Float,
     Boolean, Text, Index,
     select, func, text, 
     CheckConstraint, UniqueConstraint, 
@@ -107,6 +108,18 @@ class ProtectedApp(Base):
     __tablename__ = 'protected_apps'
     __table_args__ = (
         UniqueConstraint('owner_user_id', 'name', 'url'),
+        CheckConstraint(
+            'risk_score_severity_score_weight >= 0 AND risk_score_severity_score_weight <= 1',
+            name='risk_score_severity_score_weight_range',
+        ),
+        CheckConstraint(
+            'risk_score_confidence_pct_weight >= 0 AND risk_score_confidence_pct_weight <= 1',
+            name='risk_score_confidence_pct_weight_range',
+        ),
+        CheckConstraint(
+            'ABS(risk_score_severity_score_weight + risk_score_confidence_pct_weight - 1.0) <= 0.000001',
+            name='risk_score_weights_sum',
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
@@ -114,11 +127,30 @@ class ProtectedApp(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     url: Mapped[str] = mapped_column(String(255), nullable=False)
     live: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
+    risk_score_severity_score_weight: Mapped[float] = mapped_column(Float(), nullable=False, default=0.5)
+    risk_score_confidence_pct_weight: Mapped[float] = mapped_column(Float(), nullable=False, default=0.5)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
 
     def is_live(self) -> bool:
         return self.live
+
+    @validates('risk_score_severity_score_weight', 'risk_score_confidence_pct_weight')
+    def validate_risk_score_weight(self, key, value):
+        if value < 0 or value > 1:
+            raise ValueError(f'{key} must be within [0, 1]')
+
+        other_key = (
+            'risk_score_confidence_pct_weight'
+            if key == 'risk_score_severity_score_weight'
+            else 'risk_score_severity_score_weight'
+        )
+        other_value = getattr(self, other_key, None)
+
+        if other_value is not None and abs((value + other_value) - 1.0) > 0.000001:
+            raise ValueError('risk score weights must sum to 1.0')
+
+        return value
     
     @classmethod
     def __declare_last__(cls):

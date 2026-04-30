@@ -106,7 +106,7 @@ class UserFactory(SQLAlchemyModelFactory):
     class Meta:
         model = User
 
-    id = factory.Faker('pyint', min_value=1)
+    id = factory.Sequence(lambda n: n + 1)
     email = factory.LazyFunction(lambda: f"{fake.user_name()}@fakemail.com")
     password_hash = password_sec_measure.hash_password(DEFAULT_PASSWORD)
     verified = True
@@ -123,11 +123,17 @@ class ProtectedAppFactory(SQLAlchemyModelFactory):
     class Meta:
         model = ProtectedApp
 
-    id = factory.Faker('pyint', min_value=1)
+    id = factory.Sequence(lambda n: n + 1)
     owner_user_id = factory.Faker('pyint', min_value=1)
     name = factory.Faker('domain_word')
     url = factory.LazyAttribute(lambda obj: f'http://{obj.name}.{fake.tld()}')
     live = factory.fuzzy.FuzzyChoice([True, False])
+    risk_score_severity_score_weight = factory.LazyFunction(
+        lambda: round(random.randint(0, 100) / 100, 2)
+    )
+    risk_score_confidence_pct_weight = factory.LazyAttribute(
+        lambda obj: round(1 - obj.risk_score_severity_score_weight, 2)
+    )
     created_at = factory.fuzzy.FuzzyDateTime(
         datetime(2022, 1, 1, tzinfo=timezone.utc), 
         end_dt=datetime(2026, 1, 1, tzinfo=timezone.utc),
@@ -141,7 +147,7 @@ class AppSecurityPolicyFactory(SQLAlchemyModelFactory):
     class Meta:
         model = AppSecurityPolicy
 
-    id = factory.Faker('pyint', min_value=1)
+    id = factory.Sequence(lambda n: n + 1)
     protected_app_id = factory.Faker('pyint', min_value=1)
     http_method = factory.fuzzy.FuzzyChoice(HTTPMethods)
     route_pattern = factory.LazyFunction(
@@ -168,7 +174,7 @@ class FlaggedRequestFactory(SQLAlchemyModelFactory):
     class Meta:
         model = FlaggedRequest
 
-    id = factory.Faker('pyint', min_value=1)
+    id = factory.Sequence(lambda n: n + 1)
     app_security_policy_id = factory.Faker('pyint', min_value=1)
     observed_at = factory.fuzzy.FuzzyDateTime(
         datetime(2022, 1, 1, tzinfo=timezone.utc), 
@@ -200,7 +206,7 @@ class SecurityEventFactory(SQLAlchemyModelFactory):
     class Meta:
         model = SecurityEvent
 
-    id = factory.Faker('pyint', min_value=1)
+    id = factory.Sequence(lambda n: n + 1)
     flagged_request_id = factory.Faker('pyint', min_value=1)
     threat_type = factory.fuzzy.FuzzyChoice(ThreatTypes)
     threat_severity = factory.fuzzy.FuzzyChoice(ThreatSeverities)

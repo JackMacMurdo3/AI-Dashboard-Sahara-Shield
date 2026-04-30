@@ -46,7 +46,14 @@ class ProtectedAppController(Controller):
         self.read_service = read_protected_apps_service
         self.schema = ProtectedAppSchema(load_instance=False)
 
-    async def create_protected_app(self, user: User, name: str, url: str):
+    async def create_protected_app(
+        self,
+        user: User,
+        name: str,
+        url: str,
+        risk_score_severity_score_weight: float = 0.5,
+        risk_score_confidence_pct_weight: float = 0.5,
+    ):
         '''
         Create a new protected app for the current user.
 
@@ -63,7 +70,11 @@ class ProtectedAppController(Controller):
         '''
         try:
             protected_app = await self.create_service.create(
-                owner_user_id=user.id, name=name, url=url
+                owner_user_id=user.id,
+                name=name,
+                url=url,
+                risk_score_severity_score_weight=risk_score_severity_score_weight,
+                risk_score_confidence_pct_weight=risk_score_confidence_pct_weight,
             )
             return self.schema.dump(protected_app)
         except Exception as e:

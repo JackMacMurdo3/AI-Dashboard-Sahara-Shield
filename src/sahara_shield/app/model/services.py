@@ -74,13 +74,26 @@ class CreateProtectedAppService(Service):
     Asynchronously create new protected apps in the database
     '''
 
-    async def create(self, owner_user_id: int, name: str, url: str) -> ProtectedApp:
+    async def create(
+        self,
+        owner_user_id: int,
+        name: str,
+        url: str,
+        risk_score_severity_score_weight: float = 0.5,
+        risk_score_confidence_pct_weight: float = 0.5,
+    ) -> ProtectedApp:
         '''
         Asynchronously create a new protected app for a user
         '''
         
         try:
-            protected_app = ProtectedApp(owner_user_id=owner_user_id, name=name, url=url)
+            protected_app = ProtectedApp(
+                owner_user_id=owner_user_id,
+                name=name,
+                url=url,
+                risk_score_severity_score_weight=risk_score_severity_score_weight,
+                risk_score_confidence_pct_weight=risk_score_confidence_pct_weight,
+            )
             self.db_session.add(protected_app)
             await self.save_changes()
             return protected_app
