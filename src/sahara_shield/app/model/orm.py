@@ -218,6 +218,7 @@ class AppSecurityPolicy(Base):
     route_pattern: Mapped[str] = mapped_column(String(255), nullable=False)
     mode: Mapped[PolicyModes] = mapped_column(Enum(PolicyModes), nullable=False, default=PolicyModes.MONITOR)
     active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True)
+    active_status_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     priority: Mapped[int] = mapped_column(Integer(), nullable=False, default=100)
     min_block_score: Mapped[int] = mapped_column(Integer(), nullable=False, default=70)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
@@ -240,6 +241,25 @@ class AppSecurityPolicy(Base):
     def should_block(self, risk_score:int):
         return risk_score >= self.min_block_score
     
+    @classmethod
+    def __declare_last__(cls):
+        cls.flagged_requests_count = column_property(
+            select(func.count(FlaggedRequest.id))
+            .select_from(FlaggedRequest)
+            .where(FlaggedRequest.app_security_policy_id == cls.id)
+            .correlate_except(FlaggedRequest)
+            .scalar_subquery()
+        )
+
+        cls.security_events_count = column_property(
+            select(func.count(SecurityEvent.id))
+            .select_from(SecurityEvent)
+            .join(FlaggedRequest, SecurityEvent.flagged_request_id == FlaggedRequest.id)
+            .where(FlaggedRequest.app_security_policy_id == cls.id)
+            .correlate_except(SecurityEvent, FlaggedRequest)
+            .scalar_subquery()
+        )
+
 class FlaggedRequest(Base):
     '''
     Represents an HTTP request flagged in some way as suspicious/malicious.

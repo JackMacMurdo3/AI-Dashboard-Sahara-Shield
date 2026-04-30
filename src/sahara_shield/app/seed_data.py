@@ -165,6 +165,10 @@ class AppSecurityPolicyFactory(SQLAlchemyModelFactory):
         datetime(2022, 1, 1, tzinfo=timezone.utc), 
         end_dt=datetime(2026, 1, 1, tzinfo=timezone.utc),
         )
+    active_status_changed_at = factory.LazyAttribute(lambda obj: fake.date_time_between_dates(
+        datetime_start=obj.created_at, 
+        tzinfo=timezone.utc),
+    )
 
 class FlaggedRequestFactory(SQLAlchemyModelFactory):
     '''
@@ -177,8 +181,8 @@ class FlaggedRequestFactory(SQLAlchemyModelFactory):
     id = factory.Sequence(lambda n: n + 1)
     app_security_policy_id = factory.Faker('pyint', min_value=1)
     observed_at = factory.fuzzy.FuzzyDateTime(
-        datetime(2022, 1, 1, tzinfo=timezone.utc), 
-        end_dt=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        datetime(2026, 1, 1, tzinfo=timezone.utc), 
+        end_dt=datetime.now(tz=timezone.utc),
         )
     http_method = factory.fuzzy.FuzzyChoice(HTTPMethods)
     query_string = factory.LazyFunction(make_random_query_string)
@@ -215,8 +219,8 @@ class SecurityEventFactory(SQLAlchemyModelFactory):
     action = factory.fuzzy.FuzzyChoice(SecurityActions)
     reason_desc = factory.LazyFunction(lambda: fake.sentence(nb_words=15))
     created_at = factory.fuzzy.FuzzyDateTime(
-        datetime(2022, 1, 1, tzinfo=timezone.utc), 
-        end_dt=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        datetime(2026, 1, 1, tzinfo=timezone.utc), 
+        end_dt=datetime.now(tz=timezone.utc),
         )
     
 def generate_seed_users(n:int=10) -> list[User]:
@@ -305,29 +309,29 @@ def generate_seed_flagged_requests(n:int=10, app_security_policies:list[AppSecur
     return flagged_requests
 
 def generate_seed_security_events(n:int=10, flagged_requests:list[FlaggedRequest]=[]) -> list[SecurityEvent]:
-    '''
-    Generates n seed security event instances.
+    if flagged_requests:
+        # must maintain a 1:1 relationship between flagged requests and security events
+        # if we're inserting into a database
+        n = len(flagged_requests)
 
-    Args:
-        n (int): The number of security event instances to generate.
-        flagged_requests (list): A list of flagged request objects to associate with.
-    Returns:
-        security_events (list): A list of n security event instances.
-    '''
     security_events: list[SecurityEvent] = SecurityEventFactory.build_batch(n)
 
     if not flagged_requests: return security_events # no flagged request objects provided, return security events as-is
 
     unchosen_security_events = set(security_events)
+    unchosen_flagged_requests = set(flagged_requests)
     while unchosen_security_events:
         # randomly choose a flagged request
-        flagged_request = random.choice(flagged_requests)
+        flagged_request = random.choice(list(unchosen_flagged_requests))
 
         # randomly choose security event
         security_event = random.choice(list(unchosen_security_events))
 
         # associate security event w/ flagged request
         security_event.flagged_request_id = flagged_request.id
+
+        # remove chosen flagged request so it's not picked again
+        unchosen_flagged_requests = unchosen_flagged_requests - set([flagged_request])
 
         # remove chosen security event so it's not picked again
         unchosen_security_events = unchosen_security_events - set([security_event])

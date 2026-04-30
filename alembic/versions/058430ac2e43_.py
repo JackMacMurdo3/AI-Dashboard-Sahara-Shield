@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: b89b57b0ccff
+Revision ID: 058430ac2e43
 Revises: 
-Create Date: 2026-04-29 16:54:30.612803
+Create Date: 2026-04-30 15:39:28.801405
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'b89b57b0ccff'
+revision: str = '058430ac2e43'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -47,8 +47,13 @@ def upgrade() -> None:
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('url', sa.String(length=255), nullable=False),
     sa.Column('live', sa.Boolean(), nullable=False),
+    sa.Column('risk_score_severity_score_weight', sa.Float(), nullable=False),
+    sa.Column('risk_score_confidence_pct_weight', sa.Float(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.CheckConstraint('ABS(risk_score_severity_score_weight + risk_score_confidence_pct_weight - 1.0) <= 0.000001', name=op.f('ck_protected_apps_risk_score_weights_sum')),
+    sa.CheckConstraint('risk_score_confidence_pct_weight >= 0 AND risk_score_confidence_pct_weight <= 1', name=op.f('ck_protected_apps_risk_score_confidence_pct_weight_range')),
+    sa.CheckConstraint('risk_score_severity_score_weight >= 0 AND risk_score_severity_score_weight <= 1', name=op.f('ck_protected_apps_risk_score_severity_score_weight_range')),
     sa.ForeignKeyConstraint(['owner_user_id'], ['users.id'], name=op.f('fk_protected_apps_owner_user_id_users')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_protected_apps')),
     sa.UniqueConstraint('owner_user_id', 'name', 'url', name=op.f('uq_protected_apps_owner_user_id'))
@@ -60,6 +65,7 @@ def upgrade() -> None:
     sa.Column('route_pattern', sa.String(length=255), nullable=False),
     sa.Column('mode', sa.Enum('MONITOR', 'ENFORCE', name='policymodes'), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
+    sa.Column('active_status_changed_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('priority', sa.Integer(), nullable=False),
     sa.Column('min_block_score', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),

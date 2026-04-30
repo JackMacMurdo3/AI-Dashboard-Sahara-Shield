@@ -40,8 +40,13 @@ function renderProtectedAppInfo(app) {
   statsGrid.className = 'stats-grid';
 
   const liveStatus = app.live ? 'Live' : 'Offline';
-
-  statsGrid.appendChild(createStatItem('Live', liveStatus));
+  const liveItem = createStatItem('Live', liveStatus);
+  // color the Live value green when live, red when offline
+  const liveValueEl = liveItem.querySelector('.stat-value');
+  if (liveValueEl) {
+    liveValueEl.style.color = app.live ? '#059669' : '#dc2626';
+  }
+  statsGrid.appendChild(liveItem);
   statsGrid.appendChild(
     createStatItem('App Security Policies', app.app_security_policies_count ?? 0),
   );
