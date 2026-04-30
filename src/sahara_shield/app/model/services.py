@@ -3,7 +3,7 @@ Service layer in MVC architecture.
 '''
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, Result
+from sqlalchemy import select, delete, Result, func
 from sqlalchemy.exc import IntegrityError
 from datetime import timedelta
 from sahara_shield.app.model.orm import (
@@ -181,6 +181,92 @@ class ReadSecurityEventsService(Service):
             .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id)
             .where(ProtectedApp.owner_user_id == user_id)
             .where(ProtectedApp.id == protected_app_id)
+        )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.scalars().all()
+
+        return rows
+
+    async def read_threat_severity_counts_by_user_id_and_protected_app_id(self, user_id: int, protected_app_id: int):
+        stmt = (
+            select(
+                SecurityEvent.threat_severity,
+                func.count(SecurityEvent.id),
+            )
+            .join(
+                FlaggedRequest, 
+                SecurityEvent.flagged_request_id == FlaggedRequest.id,
+            )
+            .join(
+                AppSecurityPolicy,
+                FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id,
+            )
+            .join(
+                ProtectedApp, 
+                AppSecurityPolicy.protected_app_id == ProtectedApp.id,
+            )
+            .where(ProtectedApp.owner_user_id == user_id)
+            .where(ProtectedApp.id == protected_app_id)
+            .group_by(SecurityEvent.threat_severity)
+        )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.all()
+
+        return rows
+    
+    async def read_threat_type_counts_by_user_id_and_protected_app_id(self, user_id:int, protected_app_id:int):
+        stmt = (
+            select(
+                SecurityEvent.threat_type, 
+                func.count(SecurityEvent.id),
+            )
+            .join(
+                FlaggedRequest, 
+                SecurityEvent.flagged_request_id == FlaggedRequest.id,
+                )
+            .join(
+                AppSecurityPolicy,
+                FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id,
+            )
+            .join(
+                ProtectedApp, 
+                AppSecurityPolicy.protected_app_id == ProtectedApp.id,
+                )
+            .where(ProtectedApp.owner_user_id == user_id)
+            .where(ProtectedApp.id == protected_app_id)
+            .group_by(SecurityEvent.threat_type)
+        )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.all()
+
+        return rows
+
+    async def read_confidence_pcts_by_user_id_and_protected_app_id(self, user_id:int, protected_app_id:int):
+        stmt = (
+            select(
+                SecurityEvent.confidence_pct,
+            )
+            .join(
+                FlaggedRequest, 
+                SecurityEvent.flagged_request_id == FlaggedRequest.id,
+            )
+            .join(
+                AppSecurityPolicy,
+                FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id,
+            )
+            .join(
+                ProtectedApp, 
+                AppSecurityPolicy.protected_app_id == ProtectedApp.id,
+            )
+            .where(ProtectedApp.owner_user_id == user_id)
+            .where(ProtectedApp.id == protected_app_id)
+            .order_by(SecurityEvent.confidence_pct)
         )
 
         res: Result = await self.db_session.execute(stmt)

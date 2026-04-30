@@ -11,11 +11,14 @@ from sahara_shield.app.model.services import (
     ReadAppSecurityPoliciesService, UserAuthService,
     ReadFlaggedRequestsService, ReadSecurityEventsService,
 )
-from sahara_shield.app.model.marshal import ProtectedAppSchema
-from sahara_shield.app.model.marshal import AppSecurityPolicySchema
-from sahara_shield.app.model.marshal import FlaggedRequestSchema
-from sahara_shield.app.model.marshal import SecurityEventSchema
+from sahara_shield.app.model.marshal import (
+    ProtectedAppSchema, AppSecurityPolicySchema,
+    FlaggedRequestSchema, SecurityEventSchema,
+)
 from sahara_shield.app.model.orm import User
+from sahara_shield.app.model.enums import (
+    ThreatSeverities, ThreatTypes,
+)
 from sahara_shield.app.core.config import AppSettings
 
 class Controller():
@@ -145,17 +148,76 @@ class SecurityEventsController(Controller):
 
     async def get_user_security_events(self, user: User):
         '''
-        Retrieve security events for the user's protected apps.
+        Retrieve security events for a user's protected apps.
         '''
         events = await self.read_service.read_by_user_id(user.id)
         return self.schema.dump(events, many=True)
     
     async def get_user_protected_app_security_events(self, user:User, protected_app_id:int):
         '''
-        Retrieve security events for a specific protected app belonging to the user.
+        Retrieve security events for a specific protected app belonging to a user.
         '''
         events = await self.read_service.read_by_user_id_and_protected_app_id(user.id, protected_app_id)
         return self.schema.dump(events, many=True)
+
+    async def get_user_protected_app_security_event_threat_severity_counts(self, user: User, protected_app_id: int):
+        '''
+        Retrieve counts of security events grouped by threat severity for a protected app belonging to a user.
+        '''
+        rows = await self.read_service.read_threat_severity_counts_by_user_id_and_protected_app_id(
+            user.id,
+            protected_app_id,
+        )
+
+        severity_counts = {severity.value: 0 for severity in ThreatSeverities}
+
+        for severity, count in rows:
+            severity_counts[severity.value] = count
+
+        return severity_counts
+    
+    async def get_user_protected_app_security_event_threat_type_counts(self, user:User, protected_app_id:int):
+        '''
+        Retrieve counts of security events grouped by threat type for a protected app belong to a user.
+        '''
+
+        rows = await self.read_service.read_threat_type_counts_by_user_id_and_protected_app_id(
+            user.id, 
+            protected_app_id,
+        )
+
+        threat_type_counts = {threat_type.value: 0 for threat_type in ThreatTypes}
+
+        for threat_type, count in rows:
+            threat_type_counts[threat_type.value] = count
+
+        return threat_type_counts
+
+    async def get_user_protected_app_security_event_confidence_pct_stats(self, user:User, protected_app_id:int):
+        '''
+        Compute mean and median confidence percentages for security events of a protected app.
+        '''
+
+        pcts = await self.read_service.read_confidence_pcts_by_user_id_and_protected_app_id(
+            user.id,
+            protected_app_id,
+        )
+
+        if not pcts:
+            return {'mean': 0.0, 'median': 0.0}
+
+        total = sum(pcts)
+        n = len(pcts)
+        mean = total / n
+
+        # pcts are ordered ascending from the query
+        mid = n // 2
+        if n % 2 == 1:
+            median = float(pcts[mid])
+        else:
+            median = (pcts[mid - 1] + pcts[mid]) / 2.0
+
+        return {'mean': mean, 'median': median}
 
 class AuthController(Controller):
     '''
