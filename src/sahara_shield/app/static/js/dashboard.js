@@ -2,10 +2,12 @@ const dashboardTitle = document.getElementById('dashboard-title');
 const appSubtitle = document.getElementById('app-subtitle');
 const appInfo = document.getElementById('app-info');
 const errorMessage = document.getElementById('error-message');
+const tabNavigation = document.querySelector('.tab-navigation');
+const tabContent = document.querySelector('.tab-content');
+const policiesTable = document.getElementById('policies-table');
 
 function getProtectedAppIdFromUrl() {
   const pathParts = window.location.pathname.split('/').filter(Boolean);
-  console.log(pathParts);
 
   if (pathParts.length >= 2 && pathParts[0] === 'dashboard') {
     return pathParts[1];
@@ -60,6 +62,106 @@ function renderProtectedAppInfo(app) {
   appInfo.appendChild(statsGrid);
 }
 
+function renderPoliciesTable(policies, protectedAppId) {
+  policiesTable.innerHTML = '';
+
+  if (!policies.length) {
+    const emptyState = document.createElement('p');
+    emptyState.className = 'policies-empty';
+    emptyState.textContent = 'No security policies have been created yet.';
+    policiesTable.appendChild(emptyState);
+    return;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'policies-table-wrap';
+
+  const table = document.createElement('table');
+  table.className = 'policies-table-element';
+
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+
+  ['Name', 'Method', 'Mode', 'Status', ''].forEach((headerText) => {
+    const th = document.createElement('th');
+    th.textContent = headerText;
+    headRow.appendChild(th);
+  });
+
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
+  policies.forEach((policy) => {
+    const row = document.createElement('tr');
+
+    const nameCell = document.createElement('td');
+    nameCell.className = 'policy-name-cell';
+    const name = document.createElement('p');
+    name.className = 'policy-name';
+    name.textContent = policy.name || `Policy ${policy.id}`;
+    const route = document.createElement('p');
+    route.className = 'policy-route';
+    route.textContent = policy.route_pattern || '';
+    nameCell.appendChild(name);
+    nameCell.appendChild(route);
+
+    const methodCell = document.createElement('td');
+    methodCell.textContent = policy.http_method || '';
+
+    const modeCell = document.createElement('td');
+    modeCell.textContent = policy.mode || '';
+
+    const statusCell = document.createElement('td');
+    statusCell.textContent = policy.active ? 'Active' : 'Inactive';
+    // color the Active value green when active, red when innactive
+    if (statusCell) {
+      statusCell.style.color = policy.active ? '#059669' : '#dc2626';
+    }
+
+    const actionCell = document.createElement('td');
+    const viewButton = document.createElement('button');
+    viewButton.type = 'button';
+    viewButton.className = 'view-policy-button';
+    viewButton.textContent = 'View';
+    viewButton.addEventListener('click', () => {
+      window.location.href = `/dashboard/${protectedAppId}/policies/${policy.id}`;
+    });
+    actionCell.appendChild(viewButton);
+
+    row.appendChild(nameCell);
+    row.appendChild(methodCell);
+    row.appendChild(modeCell);
+    row.appendChild(statusCell);
+    row.appendChild(actionCell);
+    tbody.appendChild(row);
+  });
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  policiesTable.appendChild(wrap);
+}
+
+function renderPolicyDetail(policy, app) {
+  policyDetailFields.innerHTML = '';
+  policyDetailTitle.textContent = policy.name || 'App Security Policy';
+  policyDetailSubtitle.textContent = app ? `Protected app: ${app.name}` : '';
+
+  [
+    ['Policy ID', policy.id],
+    ['Protected App ID', policy.protected_app_id],
+    ['HTTP Method', policy.http_method],
+    ['Route Pattern', policy.route_pattern],
+    ['Mode', policy.mode],
+    ['Status', policy.active ? 'Active' : 'Inactive'],
+    ['Priority', policy.priority],
+    ['Min Block Score', policy.min_block_score],
+  ].forEach(([label, value]) => {
+    policyDetailFields.appendChild(createFieldRow(label, value));
+  });
+}
+
 async function loadProtectedAppDashboard() {
   try {
     errorMessage.textContent = '';
@@ -87,6 +189,9 @@ async function loadProtectedAppDashboard() {
     renderProtectedAppInfo(app);
   } catch (error) {
     appInfo.innerHTML = '';
+    if (policiesTable) {
+      policiesTable.innerHTML = '';
+    }
     errorMessage.textContent = error instanceof Error ? error.message : String(error);
   }
 }
@@ -120,7 +225,11 @@ function initializeTabs() {
         correspondingPanel.classList.add('active');
         correspondingPanel.removeAttribute('hidden');
 
-        // Load events summary when events tab is clicked
+        if (tabName === 'policies' && protectedAppId) {
+          await loadProtectedAppPolicies(protectedAppId);
+        }
+
+        // load events summary when events tab is clicked
         if (tabName === 'events' && protectedAppId) {
           await loadSecurityEventsSummary(protectedAppId);
         }
@@ -258,6 +367,31 @@ async function loadSecurityEventsSummary(protectedAppId) {
     errorDiv.className = 'error';
     errorDiv.textContent = error instanceof Error ? error.message : String(error);
     eventsSummaryDiv.appendChild(errorDiv);
+  }
+}
+
+async function loadProtectedAppPolicies(protectedAppId) {
+  try {
+    const response = await fetch(
+      `/api/v1/app_security_policies/me/protected_app/${protectedAppId}`,
+      {
+        method: 'GET',
+        credentials: 'include',
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch app security policies');
+    }
+
+    const policies = await response.json();
+    renderPoliciesTable(Array.isArray(policies) ? policies : [], protectedAppId);
+  } catch (error) {
+    policiesTable.innerHTML = '';
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error';
+    errorDiv.textContent = error instanceof Error ? error.message : String(error);
+    policiesTable.appendChild(errorDiv);
   }
 }
 
