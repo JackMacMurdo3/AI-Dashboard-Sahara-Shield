@@ -59,4 +59,3 @@ class SecurityActions(StrEnum):
 
     ALLOW = enum.auto()
     BLOCK = enum.auto()
-    MONITOR_ONLY = enum.auto()

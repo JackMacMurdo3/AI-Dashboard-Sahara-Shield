@@ -26,6 +26,9 @@ class Service():
     async def save_changes(self):
         await self.db_session.commit()
 
+    async def refresh(self, obj:object):
+        await self.db_session.refresh(obj)
+
     async def discard_changes(self):
         await self.db_session.rollback()
 
@@ -69,6 +72,15 @@ class ReadProtectedAppsService(Service):
 
         return info
 
+    async def read_by_id(self, id: int):
+        stmt = select(ProtectedApp).where(ProtectedApp.id == id)
+
+        res: Result = await self.db_session.execute(stmt)
+
+        info = res.scalars().one_or_none()
+
+        return info
+
 class CreateProtectedAppService(Service):
     '''
     Asynchronously create new protected apps in the database
@@ -96,6 +108,7 @@ class CreateProtectedAppService(Service):
             )
             self.db_session.add(protected_app)
             await self.save_changes()
+            await self.refresh(protected_app) # see https://stackoverflow.com/questions/74252768/missinggreenlet-greenlet-spawn-has-not-been-called
             return protected_app
         
         except IntegrityError:

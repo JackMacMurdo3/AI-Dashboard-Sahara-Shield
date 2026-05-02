@@ -5,6 +5,7 @@ This module defines the SQLAlchemy mapped classes which are used for persisting 
 '''
 
 import uuid
+from urllib.parse import urlsplit
 from sqlalchemy.orm import (
     DeclarativeBase, Mapped, mapped_column, 
     Mapper, column_property, validates,
@@ -135,6 +136,23 @@ class ProtectedApp(Base):
     def is_live(self) -> bool:
         return self.live
 
+    @validates('url')
+    def validate_url(self, key, value):
+        url = (value or '').strip()
+
+        if not url:
+            raise ValueError('URL must not be empty')
+
+        parsed = urlsplit(url)
+
+        if not parsed.scheme or parsed.scheme not in {'http', 'https'}:
+            raise ValueError('Missing/bad URL scheme, must be http or https')
+
+        if not parsed.netloc:
+            raise ValueError(f'Invalid URL: {value}')
+
+        return url
+
     @validates('risk_score_severity_score_weight', 'risk_score_confidence_pct_weight')
     def validate_risk_score_weight(self, key, value):
         if value < 0 or value > 1:
@@ -155,7 +173,7 @@ class ProtectedApp(Base):
     @classmethod
     def __declare_last__(cls):
         # configure correlated subquery derived field after all mappers are ready so all mappers are defined w/o reordering
-        # otherwise e.g. Scan hasn't been defined yet and we get an error
+        # otherwise e.g. AppSecurityPolicy hasn't been defined yet and we get an error
         # see https://docs.sqlalchemy.org/en/21/orm/mapped_sql_expr.html#using-column-property
         
         cls.app_security_policies_count = column_property(
@@ -251,7 +269,6 @@ class AppSecurityPolicy(Base):
             .correlate_except(FlaggedRequest)
             .scalar_subquery()
         )
-
         cls.security_events_count = column_property(
             select(func.count(SecurityEvent.id))
             .select_from(SecurityEvent)
