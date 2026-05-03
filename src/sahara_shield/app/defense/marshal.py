@@ -1,8 +1,9 @@
 from pydantic import BaseModel, Field
 
-class DefenseCheckRequest(BaseModel):
+class InterceptedRequest(BaseModel):
     '''
-    Input payload for a defense decision request.
+    Represents an HTTP request intercepted prior to reaching its target server.
+    Intended to be analyzed by defense system for maliciousness.
     '''
 
     protected_app_id: int = Field(ge=1)
@@ -13,14 +14,16 @@ class DefenseCheckRequest(BaseModel):
     body: str = ''
     source_ip: str | None = None
 
-class DefenseCheckDecision(BaseModel):
+class SecurityDecision(BaseModel):
     '''
-    Decision returned by the defense engine.
+    Represents a security-related decision made by the defense system
+    upon analysis of an intercepted HTTP request.
     '''
 
+    upstream_app_id: int
+    upstream_app_url: str
     allow: bool
     action: str
     status_code: int
     reason: str
-    upstream_url: str
     risk_score: int = Field(ge=0, le=100)

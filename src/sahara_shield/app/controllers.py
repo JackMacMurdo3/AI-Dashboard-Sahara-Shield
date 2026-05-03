@@ -20,6 +20,7 @@ from sahara_shield.app.model.enums import (
     ThreatSeverities, ThreatTypes,
 )
 from sahara_shield.app.core.config import AppSettings
+from sahara_shield.app.defense.decision_engine import DecisionEngine, InterceptedRequest, RandomDecisionEngine
 
 class Controller():
     '''
@@ -346,3 +347,20 @@ class AuthController(Controller):
             secure=True,
             httponly=True,
         )
+
+class SecurityDecisionEnginesController(Controller):
+    def __init__(
+            self,
+            read_protected_apps_service:ReadProtectedAppsService,
+            decision_engine:DecisionEngine,
+            ):
+        self.read_protected_apps_service = read_protected_apps_service
+        self.decision_engine = decision_engine
+
+    async def get_security_decision(self, req:InterceptedRequest, **kwargs):
+        protected_app = await self.read_protected_apps_service.read_by_id(req.protected_app_id)
+
+        if protected_app is None:
+            raise HTTPException(status_code=404, detail='Protected app not found')
+        
+        return await self.decision_engine.decide(req, protected_app)

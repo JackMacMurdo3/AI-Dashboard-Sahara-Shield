@@ -105,9 +105,9 @@ def create_app(cfg: ProxyConfig) -> FastAPI:
     logger = logging.getLogger('sahara_shield.proxy')
     if not logger.handlers:
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+        handler.setFormatter(logging.Formatter('%(levelname)s @ %(asctime)s: %(message)s'))
         logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     @app.api_route('/{proxy_path:path}', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
     async def proxy_all(request: Request, proxy_path: str):
@@ -148,14 +148,14 @@ def create_app(cfg: ProxyConfig) -> FastAPI:
                 )
 
             decision = defense_resp.json()
-            logger.debug('Defense decision: %s', decision)
+            logger.info('Defense decision: %s', decision)
 
             if not bool(decision.get('allow')):
                 status_code = int(decision.get('status_code', 403))
                 reason = str(decision.get('reason', 'Blocked by defense decision'))
                 return JSONResponse(status_code=status_code, content={'detail': reason})
             
-            upstream_base_url = decision.get('upstream_url')
+            upstream_base_url = decision.get('upstream_app_url')
 
             upstream_url = _build_upstream_url(
                 upstream_base_url,

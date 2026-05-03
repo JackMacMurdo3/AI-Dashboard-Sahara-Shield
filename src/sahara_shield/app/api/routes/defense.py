@@ -1,18 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sahara_shield.app.defense.engine import make_decision
-from sahara_shield.app.defense.marshal import DefenseCheckDecision, DefenseCheckRequest
-from sahara_shield.app.api.deps import get_read_protected_apps_service
-from sahara_shield.app.model.services import ReadProtectedAppsService
+from fastapi import APIRouter
+from sahara_shield.app.defense.marshal import SecurityDecision, InterceptedRequest
+from sahara_shield.app.api.deps import SecurityDecisionsEngineControllerDep
 
 defense_router = APIRouter(
     prefix='/defense',
     tags=['defense'],
 )
 
-@defense_router.post('/check', response_model=DefenseCheckDecision)
+@defense_router.post('/check', response_model=SecurityDecision)
 async def check_request(
-    payload: DefenseCheckRequest,
-    read_protected_apps_service: ReadProtectedAppsService = Depends(get_read_protected_apps_service),
+    req: InterceptedRequest,
+    security_decisions_engine_controller: SecurityDecisionsEngineControllerDep,
 ):
     '''
     Return an allow/block decision for request.
@@ -20,10 +18,4 @@ async def check_request(
     This endpoint is intended for use by a standalone reverse proxy process.
     '''
 
-    protected_app = await read_protected_apps_service.read_by_id(payload.protected_app_id)
-
-    if protected_app is None:
-        raise HTTPException(status_code=404, detail='Protected app not found')
-
-    decision = make_decision(payload, protected_app)
-    return decision
+    return await security_decisions_engine_controller.get_security_decision(req)
