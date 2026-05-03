@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from sahara_shield.app.defense.marshal import SecurityDecision, InterceptedRequest
-from sahara_shield.app.api.deps import SecurityDecisionsEngineControllerDep
+from sahara_shield.app.api.deps import SecurityDecisionControllerDep
 
 defense_router = APIRouter(
     prefix='/defense',
@@ -10,7 +10,7 @@ defense_router = APIRouter(
 @defense_router.post('/check', response_model=SecurityDecision)
 async def check_request(
     req: InterceptedRequest,
-    security_decisions_engine_controller: SecurityDecisionsEngineControllerDep,
+    security_decision_controller: SecurityDecisionControllerDep,
 ):
     '''
     Return an allow/block decision for request.
@@ -18,4 +18,4 @@ async def check_request(
     This endpoint is intended for use by a standalone reverse proxy process.
     '''
 
-    return await security_decisions_engine_controller.get_security_decision(req)
+    return await security_decision_controller.get_security_decision(req)

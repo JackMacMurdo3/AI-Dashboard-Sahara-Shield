@@ -22,6 +22,14 @@ class PolicyModes(StrEnum):
     MONITOR = enum.auto()
     ENFORCE = enum.auto()
 
+class DecisionEngineKeys(StrEnum):
+    '''
+    Identifies which decision engine should analyze a request for a policy.
+    '''
+
+    RANDOM = enum.auto()
+    AI = enum.auto()
+
 class ThreatTypes(StrEnum):
     NONE = enum.auto()
     UNKNOWN = enum.auto()

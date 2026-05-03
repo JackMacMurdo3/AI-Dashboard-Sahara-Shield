@@ -19,10 +19,14 @@ from sahara_shield.app.model.services import (
 from sahara_shield.app.controllers import (
     ProtectedAppController, AuthController, 
     AppSecurityPolicyController, FlaggedRequestsController, SecurityEventsController,
-    SecurityDecisionEnginesController,
+    SecurityDecisionController,
 )
 from sahara_shield.app.model.orm import User
-from sahara_shield.app.defense.decision_engine import RandomDecisionEngine
+from sahara_shield.app.defense.decision_engine import (
+    DecisionEngine,
+    decision_engine_registry,
+)
+from sahara_shield.app.model.enums import DecisionEngineKeys
 
 def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
     '''
@@ -164,6 +168,9 @@ def get_security_events_controller(
     '''
     return SecurityEventsController(read_security_events_service)
 
+def get_decision_engine_registry():
+    return decision_engine_registry
+
 def get_auth_controller(
         auth_service: UserAuthService = Depends(get_user_auth_service),
         settings = Depends(get_app_settings),
@@ -173,14 +180,18 @@ def get_auth_controller(
     '''
     return AuthController(auth_service, settings)
 
-def get_security_decision_engines_controller(
-        read_protected_apps_service: ReadProtectedAppsService = Depends(get_read_protected_apps_service)
-        ) -> SecurityDecisionEnginesController:
-    '''
-    Dependency injection function that provides a SecurityDecisionsEnginesController instance.
-    '''
-    return SecurityDecisionEnginesController(read_protected_apps_service, RandomDecisionEngine())
 
+def get_security_decision_controller(
+        read_protected_apps_service: ReadProtectedAppsService = Depends(get_read_protected_apps_service),
+        decision_engine_registry: dict[DecisionEngineKeys, DecisionEngine] = Depends(get_decision_engine_registry),
+        ) -> SecurityDecisionController:
+    '''
+    Dependency injection function that provides a SecurityDecisionController instance.
+    '''
+    return SecurityDecisionController(
+        read_protected_apps_service,
+        decision_engine_registry,
+    )
 
 # service dependencies for external module use
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
@@ -191,7 +202,7 @@ AuthControllerDep = Annotated[AuthController, Depends(get_auth_controller)]
 AppSecurityPolicyControllerDep = Annotated[AppSecurityPolicyController, Depends(get_app_security_policy_controller)]
 FlaggedRequestsControllerDep = Annotated[FlaggedRequestsController, Depends(get_flagged_requests_controller)]
 SecurityEventsControllerDep = Annotated[SecurityEventsController, Depends(get_security_events_controller)]
-SecurityDecisionsEngineControllerDep = Annotated[
-    SecurityDecisionEnginesController, 
-    Depends(get_security_decision_engines_controller)
-    ]
+SecurityDecisionControllerDep = Annotated[
+    SecurityDecisionController,
+    Depends(get_security_decision_controller),
+]

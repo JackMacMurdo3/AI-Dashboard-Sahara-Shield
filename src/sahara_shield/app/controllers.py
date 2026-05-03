@@ -15,12 +15,14 @@ from sahara_shield.app.model.marshal import (
     ProtectedAppSchema, AppSecurityPolicySchema,
     FlaggedRequestSchema, SecurityEventSchema,
 )
-from sahara_shield.app.model.orm import User
+from sahara_shield.app.model.orm import User, AppSecurityPolicy
 from sahara_shield.app.model.enums import (
     ThreatSeverities, ThreatTypes,
+    DecisionEngineKeys,
 )
 from sahara_shield.app.core.config import AppSettings
-from sahara_shield.app.defense.decision_engine import DecisionEngine, InterceptedRequest, RandomDecisionEngine
+from sahara_shield.app.defense.decision_engine import DecisionEngine
+from sahara_shield.app.defense.marshal import InterceptedRequest, SecurityDecision
 
 class Controller():
     '''
@@ -348,19 +350,41 @@ class AuthController(Controller):
             httponly=True,
         )
 
-class SecurityDecisionEnginesController(Controller):
+class SecurityDecisionController(Controller):
     def __init__(
             self,
             read_protected_apps_service:ReadProtectedAppsService,
-            decision_engine:DecisionEngine,
+            decision_engine_registry: dict[DecisionEngineKeys, DecisionEngine],
             ):
         self.read_protected_apps_service = read_protected_apps_service
-        self.decision_engine = decision_engine
+        self.decision_engine_registry = decision_engine_registry
 
-    async def get_security_decision(self, req:InterceptedRequest, **kwargs):
+    def _resolve_decision_engine(self, app_security_policy: AppSecurityPolicy | None = None) -> DecisionEngine:
+        '''
+        Select and instantiate the engine associated with a matched policy, falling back to the default engine.
+
+        By default, the 1st registered engine is chosen. If there's no engines registered then an exception is raised.
+        '''
+
+        if len(self.decision_engine_registry) == 0:
+            raise HTTPException(status_code=401, detail='Server error: no decision engines registered')
+        
+        default_engine = self.decision_engine_registry[list(self.decision_engine_registry.keys())[0]]()
+
+        if app_security_policy is not None:
+            return self.decision_engine_registry[app_security_policy.decision_engine_key]()
+        
+        return default_engine
+
+    async def get_security_decision(
+        self,
+        req: InterceptedRequest,
+        app_security_policy: AppSecurityPolicy | None = None,
+    ) -> SecurityDecision:
         protected_app = await self.read_protected_apps_service.read_by_id(req.protected_app_id)
 
         if protected_app is None:
             raise HTTPException(status_code=404, detail='Protected app not found')
-        
-        return await self.decision_engine.decide(req, protected_app)
+
+        decision_engine = self._resolve_decision_engine(app_security_policy)
+        return await decision_engine.decide(req, protected_app)

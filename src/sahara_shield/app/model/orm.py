@@ -22,6 +22,7 @@ from sqlalchemy import (
 from sahara_shield.app.model.enums import (
     UserRoles, HTTPMethods, PolicyModes, 
     ThreatSeverities, SecurityActions, ThreatTypes,
+    DecisionEngineKeys,
 )
 from datetime import datetime, timezone
 from sqlalchemy.inspection import inspect
@@ -236,6 +237,11 @@ class AppSecurityPolicy(Base):
     http_method: Mapped[HTTPMethods] = mapped_column(Enum(HTTPMethods), nullable=False)
     route_pattern: Mapped[str] = mapped_column(String(255), nullable=False)
     mode: Mapped[PolicyModes] = mapped_column(Enum(PolicyModes), nullable=False, default=PolicyModes.MONITOR)
+    decision_engine_key: Mapped[DecisionEngineKeys] = mapped_column(
+        Enum(DecisionEngineKeys),
+        nullable=False,
+        default=DecisionEngineKeys.RANDOM,
+    )
     active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True)
     active_status_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     priority: Mapped[int] = mapped_column(Integer(), nullable=False, default=100)
