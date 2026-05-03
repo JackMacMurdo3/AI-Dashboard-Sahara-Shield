@@ -20,16 +20,10 @@ from sahara_shield.app.model.orm import (
 from sahara_shield.app.core.security import password_sec_measure
 from sahara_shield.app.model.enums import (
     HTTPMethods, PolicyModes, ThreatTypes, 
-    ThreatSeverities, SecurityActions,
+    ThreatSeverities, SecurityActions, RoutePatternDatatypes,
 )
 
 DEFAULT_PASSWORD = 'sahara123!'
-ROUTE_PATTERN_PLACEHOLDERS = [
-    '*',
-    '{id}',
-    '{username}',
-    '{email}',
-]
 fake = Faker()
 
 def make_random_query_string() -> str | None:
@@ -155,7 +149,7 @@ class AppSecurityPolicyFactory(SQLAlchemyModelFactory):
         lambda: (
             f'/api/v{random.randint(1, 1000)}/'
             f'{fake.word()}/'
-            f'{random.choice(ROUTE_PATTERN_PLACEHOLDERS)}'
+            '{'+f'{fake.word()}:{random.choice(list(RoutePatternDatatypes)).value}'+'}'
         )
     )
     mode = factory.fuzzy.FuzzyChoice(PolicyModes)

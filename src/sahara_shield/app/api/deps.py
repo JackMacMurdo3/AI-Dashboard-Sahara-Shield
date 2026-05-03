@@ -24,17 +24,13 @@ from sahara_shield.app.controllers import (
 from sahara_shield.app.model.orm import User
 from sahara_shield.app.defense.decision_engine import (
     DecisionEngine,
-    decision_engine_registry,
+    decision_engine_registry
 )
 from sahara_shield.app.model.enums import DecisionEngineKeys
 
 def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
     '''
     Dependency injection function that provides a ReadUsersService instance.
-    Args:
-        db_session (AsyncSession): An asynchronous database session obtained from the database session manager dependency.
-    Returns:
-        ReadUsersService: An instance of ReadUsersService initialized with the provided database session.
     '''
 
     return ReadUsersService(db_session)
@@ -42,11 +38,6 @@ def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
 def get_user_auth_service(db_session:AsyncSession=Depends(db_session_mngr)):
     '''
     Dependency injection function that provides a UserAuthService instance.
-    Args:
-        db_session (AsyncSession): An asynchronous database session obtained from the database session manager dependency.
-    Returns:
-        UserAuthService: An instance of UserAuthService configured with the provided database 
-        session for handling authentication-related operations.
     '''
 
     return UserAuthService(db_session)
@@ -58,17 +49,6 @@ def get_current_user_service(
         ):
     '''
         Dependency injection function that creates and returns a CurrentUserService instance.
-        Args:
-            db_session (AsyncSession): An async database session manager that provides
-                database access for user operations. Injected via FastAPI dependency.
-            user_auth_service (UserAuthService): Service instance handling user authentication
-                operations. Injected via FastAPI dependency.
-            read_users_service: Service instance for reading user data from the database.
-                Injected via FastAPI dependency.
-        Returns:
-            CurrentUserService: An initialized CurrentUserService instance configured with
-                the provided database session and service dependencies, ready to handle
-                current user operations.
     '''
     
     return CurrentUserService(db_session, user_auth_service, read_users_service)
@@ -96,24 +76,6 @@ async def get_current_user(
     Retrieve the current authenticated user for a request based on the provided session ID (token).
     This async function extracts the session ID from request cookies and fetches the associated user object. 
     It serves as a dependency for FastAPI endpoints that require user authentication.
-    Args:
-        session_id (str): The session identifier extracted from cookies. Defaults to an
-            empty string if not provided.
-        current_user_service (CurrentUserService): The service instance used to retrieve
-            user information, injected via FastAPI's dependency injection system.
-    Returns:
-        User: The user object associated with the provided session ID.
-    Raises:
-        HTTPException: With status code 401 if:
-            - The session_id is None or invalid
-            - An error occurs while retrieving the user from the service
-    Examples:
-        Used as a dependency in a protected route:
-        ```
-        @app.get("/api/profile")
-        async def get_profile(user: User = Depends(get_current_user)):
-            return user.id
-        ```
     '''
     
     if session_id is None:
@@ -168,7 +130,18 @@ def get_security_events_controller(
     '''
     return SecurityEventsController(read_security_events_service)
 
+def get_default_decision_engine_key() -> DecisionEngineKeys:
+    registered_keys = list(decision_engine_registry.keys())
+
+    if not registered_keys:
+        raise HTTPException(status_code=500, detail='No decision engines registered')
+
+    return registered_keys[0]
+
 def get_decision_engine_registry():
+    '''
+    Dependency injection function that provides the decision engine registry.
+    '''
     return decision_engine_registry
 
 def get_auth_controller(
@@ -180,17 +153,20 @@ def get_auth_controller(
     '''
     return AuthController(auth_service, settings)
 
-
 def get_security_decision_controller(
         read_protected_apps_service: ReadProtectedAppsService = Depends(get_read_protected_apps_service),
+        read_app_security_policies_service: ReadAppSecurityPoliciesService = Depends(get_read_app_security_policies_service),
         decision_engine_registry: dict[DecisionEngineKeys, DecisionEngine] = Depends(get_decision_engine_registry),
+        default_decision_engine_key: DecisionEngineKeys = Depends(get_default_decision_engine_key),
         ) -> SecurityDecisionController:
     '''
     Dependency injection function that provides a SecurityDecisionController instance.
     '''
     return SecurityDecisionController(
         read_protected_apps_service,
+        read_app_security_policies_service,
         decision_engine_registry,
+        default_decision_engine_key,
     )
 
 # service dependencies for external module use

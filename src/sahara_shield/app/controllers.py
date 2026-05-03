@@ -23,6 +23,7 @@ from sahara_shield.app.model.enums import (
 from sahara_shield.app.core.config import AppSettings
 from sahara_shield.app.defense.decision_engine import DecisionEngine
 from sahara_shield.app.defense.marshal import InterceptedRequest, SecurityDecision
+from sahara_shield.app.defense.matching import match_app_security_policies
 
 class Controller():
     '''
@@ -59,17 +60,6 @@ class ProtectedAppController(Controller):
     ):
         '''
         Create a new protected app for the current user.
-
-        Args:
-            user: Current authenticated user
-            name: Name of the protected app
-            url: URL of the protected app
-
-        Returns:
-            Serialized protected app data
-
-        Raises:
-            HTTPException: 409 if app already exists or validation fails
         '''
         try:
             protected_app = await self.create_service.create(
@@ -86,12 +76,6 @@ class ProtectedAppController(Controller):
     async def get_user_protected_apps(self, user: User):
         '''
         Retrieve all protected apps owned by the user.
-
-        Args:
-            user: Current authenticated user
-
-        Returns:
-            List of serialized protected app data
         '''
         protected_apps = await self.read_service.read_by_owner_user_id(user.id)
         return self.schema.dump(protected_apps, many=True)
@@ -99,16 +83,6 @@ class ProtectedAppController(Controller):
     async def get_user_protected_app_by_id(self, user: User, id: int):
         '''
         Retrieve a protected app by ID if owned by the user.
-
-        Args:
-            user: Current authenticated user
-            id: Protected app ID
-
-        Returns:
-            Serialized protected app data
-
-        Raises:
-            HTTPException: 404 if app is not found or not owned by the user
         '''
         protected_app = await self.read_service.read_by_id_and_owner_user_id(id, user.id)
 
@@ -116,8 +90,6 @@ class ProtectedAppController(Controller):
             raise HTTPException(status_code=404, detail='Protected app not found')
 
         return self.schema.dump(protected_app)
-
-    pass
 
 class AppSecurityPolicyController(Controller):
     '''
@@ -268,17 +240,6 @@ class AuthController(Controller):
     ):
         '''
         Authenticate a user and create an authenticated session.
-
-        Args:
-            email: User email
-            password: User password
-            response: FastAPI Response object for setting cookies
-
-        Returns:
-            Success message with session info
-
-        Raises:
-            HTTPException: 401 if credentials are invalid
         '''
         try:
             user_id = await self.auth_service.authenticate(email, password)
@@ -305,13 +266,6 @@ class AuthController(Controller):
     ):
         '''
         Terminate the user's authenticated session.
-
-        Args:
-            session_id: The session token to invalidate
-            response: FastAPI Response object for deleting cookies
-
-        Returns:
-            Success message
         '''
         await self.auth_service.delete_auth_session_by_token(session_id)
         await self.auth_service.save_changes()
@@ -354,37 +308,50 @@ class SecurityDecisionController(Controller):
     def __init__(
             self,
             read_protected_apps_service:ReadProtectedAppsService,
+            read_app_security_policies_service: ReadAppSecurityPoliciesService,
             decision_engine_registry: dict[DecisionEngineKeys, DecisionEngine],
+            default_decision_engine_key: DecisionEngineKeys,
             ):
         self.read_protected_apps_service = read_protected_apps_service
+        self.read_app_security_policies_service = read_app_security_policies_service
         self.decision_engine_registry = decision_engine_registry
+        self.default_decision_engine_key = default_decision_engine_key
 
     def _resolve_decision_engine(self, app_security_policy: AppSecurityPolicy | None = None) -> DecisionEngine:
         '''
-        Select and instantiate the engine associated with a matched policy, falling back to the default engine.
-
-        By default, the 1st registered engine is chosen. If there's no engines registered then an exception is raised.
+        Select the engine associated with a matched policy, falling back to the default engine.
         '''
 
         if len(self.decision_engine_registry) == 0:
-            raise HTTPException(status_code=401, detail='Server error: no decision engines registered')
-        
-        default_engine = self.decision_engine_registry[list(self.decision_engine_registry.keys())[0]]()
+            raise HTTPException(status_code=500, detail='Server error: no decision engines registered')
+
+        default_engine = self.decision_engine_registry[self.default_decision_engine_key]
 
         if app_security_policy is not None:
-            return self.decision_engine_registry[app_security_policy.decision_engine_key]()
+            return self.decision_engine_registry.get(app_security_policy.decision_engine_key, default_engine)
         
         return default_engine
 
     async def get_security_decision(
         self,
         req: InterceptedRequest,
-        app_security_policy: AppSecurityPolicy | None = None,
     ) -> SecurityDecision:
         protected_app = await self.read_protected_apps_service.read_by_id(req.protected_app_id)
 
         if protected_app is None:
             raise HTTPException(status_code=404, detail='Protected app not found')
 
-        decision_engine = self._resolve_decision_engine(app_security_policy)
+        app_security_policies = await self.read_app_security_policies_service.read_by_protected_app_id(
+            req.protected_app_id,
+        )
+
+        app_security_policies = match_app_security_policies(
+            app_security_policies,
+            req.http_method,
+            req.route_path,
+        )
+
+        app_security_policy = app_security_policies[0] if app_security_policies else None
+
+        decision_engine = self._resolve_decision_engine(app_security_policy)() # instantiate decision engine
         return await decision_engine.decide(req, protected_app)

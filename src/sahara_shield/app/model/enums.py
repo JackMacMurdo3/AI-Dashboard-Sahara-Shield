@@ -22,6 +22,18 @@ class PolicyModes(StrEnum):
     MONITOR = enum.auto()
     ENFORCE = enum.auto()
 
+class RoutePatternDatatypes(StrEnum):
+    '''
+    Stores the supported Starlette route pattern converter names.
+
+    See https://starlette.dev/routing/#path-parameters
+    '''
+
+    INT = enum.auto()
+    FLOAT = enum.auto()
+    STR = enum.auto()
+    PATH = enum.auto()
+
 class DecisionEngineKeys(StrEnum):
     '''
     Identifies which decision engine should analyze a request for a policy.

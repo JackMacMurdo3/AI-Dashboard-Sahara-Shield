@@ -166,6 +166,19 @@ class ReadAppSecurityPoliciesService(Service):
 
         return rows
 
+    async def read_by_protected_app_id(self, protected_app_id: int):
+        stmt = (
+            select(AppSecurityPolicy)
+            .where(AppSecurityPolicy.protected_app_id == protected_app_id)
+            .order_by(AppSecurityPolicy.priority.asc(), AppSecurityPolicy.id.asc())
+        )
+
+        res: Result = await self.db_session.execute(stmt)
+
+        rows = res.scalars().all()
+
+        return rows
+
 class ReadFlaggedRequestsService(Service):
     '''
     Asynchronously retrieve flagged requests from the database.
