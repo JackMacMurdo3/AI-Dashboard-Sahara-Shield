@@ -2,6 +2,13 @@ const welcomeMessage = document.getElementById('welcome-message');
 const appsList = document.getElementById('apps-list');
 const noAppsMessage = document.getElementById('no-apps-message');
 const errorMessage = document.getElementById('error-message');
+const createProtectedAppButton = document.getElementById('create-protected-app-button');
+
+if (createProtectedAppButton) {
+  createProtectedAppButton.addEventListener('click', () => {
+    window.location.href = '/protected_apps/new';
+  });
+}
 
 async function loadDashboard() {
   try {

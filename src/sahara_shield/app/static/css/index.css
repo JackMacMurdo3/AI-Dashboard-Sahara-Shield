@@ -21,6 +21,28 @@ body {
   margin-top: 0;
 }
 
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-button:hover {
+  background: #1d4ed8;
+}
+
+.primary-button:focus-visible {
+  outline: 3px solid #dbeafe;
+  outline-offset: 2px;
+}
+
 .apps-container {
   margin-top: 32px;
 }
