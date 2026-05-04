@@ -25,3 +25,31 @@ async def read_my_app_security_policy_by_id(
     controller: AppSecurityPolicyControllerDep,
 ):
     return await controller.get_user_app_security_policy_by_id(user, id)
+
+
+@app_security_policies.post('/me')
+async def create_app_security_policy(
+    user: CurrentUserDep,
+    controller: AppSecurityPolicyControllerDep,
+    protected_app_id: int,
+    http_method: str,
+    route_pattern: str,
+    name: str | None = None,
+    mode: str | None = None,
+    decision_engine_key: str | None = None,
+    active: bool = True,
+    priority: int = 100,
+    min_block_score: int = 70,
+):
+    return await controller.create_app_security_policy(
+        user,
+        protected_app_id,
+        http_method,
+        route_pattern,
+        name,
+        mode,
+        decision_engine_key,
+        active,
+        priority,
+        min_block_score,
+    )

@@ -11,6 +11,9 @@ from sahara_shield.app.model.orm import (
     AppSecurityPolicy, FlaggedRequest, SecurityEvent,
 )
 from sahara_shield.app.core.security import password_sec_measure
+from sahara_shield.app.model.enums import (
+    HTTPMethods, DecisionEngineKeys, PolicyModes,
+)
 
 class Service():
     '''
@@ -113,7 +116,7 @@ class CreateProtectedAppService(Service):
         
         except IntegrityError:
             await self.discard_changes()
-            raise Exception(f'Creation failed! A protected app with name "{name}" and URL "{url}" already exists for user {owner_user_id}.')
+            raise Exception('Creation failed; protected app may already exist or constraints were violated.')
     
 class ReadAppSecurityPoliciesService(Service):
     '''
@@ -125,7 +128,7 @@ class ReadAppSecurityPoliciesService(Service):
             # SELECT * FROM app_security_policies (only keep rows from left table, none from right table)
             select(AppSecurityPolicy)
             # app_security_policies = left table, protected_apps = right table
-            # LEFT JOIN protected_apps ON app_security_policies.protected_app_id = protected_apps.id
+            # INNER JOIN protected_apps ON app_security_policies.protected_app_id = protected_apps.id
             .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id)
             # WHERE protected_apps.user_id = user_id
             .where(ProtectedApp.owner_user_id == user_id)
@@ -136,7 +139,7 @@ class ReadAppSecurityPoliciesService(Service):
         rows = res.scalars().all()
 
         return rows
-
+    
     async def read_by_id_and_user_id(self, id: int, user_id: int):
         stmt = (
             select(AppSecurityPolicy)
@@ -179,6 +182,45 @@ class ReadAppSecurityPoliciesService(Service):
 
         return rows
 
+class CreateAppSecurityPolicyService(Service):
+    '''
+    Asynchronously create new AppSecurityPolicy records in the database.
+    '''
+
+    async def create(
+        self,
+        protected_app_id:int,
+        http_method:HTTPMethods,
+        route_pattern:str,
+        name:str|None = None,
+        mode:PolicyModes|None=None,
+        decision_engine_key:DecisionEngineKeys|None=None,
+        active:bool=True,
+        priority:int=100,
+        min_block_score:int=70,
+    ) -> AppSecurityPolicy:
+        try:
+            app_security_policy = AppSecurityPolicy(
+                protected_app_id=protected_app_id,
+                name=name,
+                http_method=http_method,
+                route_pattern=route_pattern,
+                mode=mode,
+                decision_engine_key=decision_engine_key,
+                active=active,
+                priority=priority,
+                min_block_score=min_block_score,
+            )
+
+            self.db_session.add(app_security_policy)
+            await self.save_changes()
+            await self.refresh(app_security_policy)
+
+            return app_security_policy
+        except IntegrityError:
+            await self.discard_changes()
+            raise Exception('Creation failed; app security policy may already exist or constraints violated.')
+    
 class ReadFlaggedRequestsService(Service):
     '''
     Asynchronously retrieve flagged requests from the database.
@@ -189,13 +231,13 @@ class ReadFlaggedRequestsService(Service):
             # SELECT * FROM flagged_requests
             select(FlaggedRequest)
             # flagged_requests = left table, app_security_policies = right table
-            # LEFT JOIN app_security_policies ON flagged_requests.app_security_policy_id = app_security_policies.id
+            # INNER JOIN app_security_policies ON flagged_requests.app_security_policy_id = app_security_policies.id
             .join(
                 AppSecurityPolicy,
                 FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id,
             )
             # result of prior join (prior_join) = left table, protected_apps = right table
-            # LEFT JOIN protected_apps ON prior_join.protected_app_id = protected_apps.id
+            # INNER JOIN protected_apps ON prior_join.protected_app_id = protected_apps.id
             .join(ProtectedApp, AppSecurityPolicy.protected_app_id == ProtectedApp.id)
             # WHERE protected_apps.owner_user_id = user_id
             .where(ProtectedApp.owner_user_id == user_id)

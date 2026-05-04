@@ -1,7 +1,7 @@
 proxy_name = "localhost_test"
 listen_host = "127.0.0.1"
 listen_port = 9001
-protected_app_id = 13
+protected_app_id = 14
 shield_host = "127.0.0.1"
 shield_port = 8001
 shield_defense_api = "/api/v1/defense/check"

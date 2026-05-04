@@ -8,6 +8,7 @@ They form the bridge between API endpoints (routes) and business logic (services
 from fastapi import HTTPException, Response
 from sahara_shield.app.model.services import (
     CreateProtectedAppService, ReadProtectedAppsService,
+    CreateAppSecurityPolicyService,
     ReadAppSecurityPoliciesService, UserAuthService,
     ReadFlaggedRequestsService, ReadSecurityEventsService,
 )
@@ -19,6 +20,7 @@ from sahara_shield.app.model.orm import User, AppSecurityPolicy
 from sahara_shield.app.model.enums import (
     ThreatSeverities, ThreatTypes,
     DecisionEngineKeys,
+    PolicyModes, HTTPMethods,
 )
 from sahara_shield.app.core.config import AppSettings
 from sahara_shield.app.defense.decision_engine import DecisionEngine
@@ -71,7 +73,7 @@ class ProtectedAppController(Controller):
             )
             return self.schema.dump(protected_app)
         except Exception as e:
-            raise HTTPException(status_code=409, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
 
     async def get_user_protected_apps(self, user: User):
         '''
@@ -96,9 +98,80 @@ class AppSecurityPolicyController(Controller):
     Orchestrates app security policy operations.
     '''
 
-    def __init__(self, read_app_security_policies_service: ReadAppSecurityPoliciesService):
+    def __init__(
+        self,
+        create_app_security_policy_service: CreateAppSecurityPolicyService,
+        read_app_security_policies_service: ReadAppSecurityPoliciesService,
+        read_protected_apps_service: ReadProtectedAppsService,
+    ):
+        self.create_service = create_app_security_policy_service
         self.read_service = read_app_security_policies_service
+        self.read_protected_apps_service = read_protected_apps_service
         self.schema = AppSecurityPolicySchema(load_instance=False)
+
+    async def create_app_security_policy(
+        self,
+        user: User,
+        protected_app_id: int,
+        http_method: str,
+        route_pattern: str,
+        name: str | None = None,
+        mode: str | None = None,
+        decision_engine_key: str | None = None,
+        active: bool = True,
+        priority: int = 100,
+        min_block_score: int = 70,
+    ):
+        # verify protected app belongs to user
+        protected_app = await self.read_protected_apps_service.read_by_id_and_owner_user_id(
+            protected_app_id,
+            user.id,
+        )
+
+        if protected_app is None:
+            raise HTTPException(status_code=404, detail='Protected app not found')
+
+        # convert http method enum
+        try:
+            http_method = http_method.upper()
+            http_method_enum = http_method if isinstance(http_method, HTTPMethods) else HTTPMethods[http_method]
+        except Exception:
+            raise HTTPException(status_code=400, detail='Invalid http_method')
+
+        # convert policy modes enum
+        try:
+            mode = mode.upper() if mode is not None else None
+            mode_enum = mode if (mode is None or isinstance(mode, PolicyModes)) else PolicyModes[mode]
+        except Exception:
+            raise HTTPException(status_code=400, detail='Invalid mode')
+
+        # convert decision engine keys enum
+        try:
+            decision_engine_key = decision_engine_key.upper() if decision_engine_key is not None else None
+            decision_engine_enum = (
+                decision_engine_key
+                if (decision_engine_key is None or isinstance(decision_engine_key, DecisionEngineKeys))
+                else DecisionEngineKeys[decision_engine_key]
+            )
+        except Exception:
+            raise HTTPException(status_code=400, detail='Invalid decision_engine_key')
+
+        try:
+            policy = await self.create_service.create(
+                protected_app_id=protected_app_id,
+                name=name,
+                http_method=http_method_enum,
+                route_pattern=route_pattern,
+                mode=mode_enum,
+                decision_engine_key=decision_engine_enum,
+                active=active,
+                priority=priority,
+                min_block_score=min_block_score,
+            )
+
+            return self.schema.dump(policy)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     async def get_user_app_security_policies(self, user: User):
         '''
@@ -352,6 +425,6 @@ class SecurityDecisionController(Controller):
         )
 
         app_security_policy = app_security_policies[0] if app_security_policies else None
-
-        decision_engine = self._resolve_decision_engine(app_security_policy)() # instantiate decision engine
+        
+        decision_engine: DecisionEngine = self._resolve_decision_engine(app_security_policy)() # instantiate decision engine
         return await decision_engine.decide(req, protected_app)

@@ -14,7 +14,7 @@ from sahara_shield.app.model.services import (
 )
 from sahara_shield.app.model.services import (
     ReadProtectedAppsService, ReadAppSecurityPoliciesService, 
-    CreateProtectedAppService, ReadFlaggedRequestsService, ReadSecurityEventsService,
+    CreateProtectedAppService, CreateAppSecurityPolicyService, ReadFlaggedRequestsService, ReadSecurityEventsService,
 )
 from sahara_shield.app.controllers import (
     ProtectedAppController, AuthController, 
@@ -62,6 +62,9 @@ def get_create_protected_app_service(db_session:AsyncSession=Depends(db_session_
 def get_read_app_security_policies_service(db_session:AsyncSession=Depends(db_session_mngr)):
     return ReadAppSecurityPoliciesService(db_session)
 
+def get_create_app_security_policy_service(db_session:AsyncSession=Depends(db_session_mngr)):
+    return CreateAppSecurityPolicyService(db_session)
+
 def get_read_flagged_requests_service(db_session:AsyncSession=Depends(db_session_mngr)):
     return ReadFlaggedRequestsService(db_session)
 
@@ -108,11 +111,17 @@ def get_protected_app_controller(
 
 def get_app_security_policy_controller(
     read_app_security_policies_service: ReadAppSecurityPoliciesService = Depends(get_read_app_security_policies_service),
+    create_app_security_policy_service: CreateAppSecurityPolicyService = Depends(get_create_app_security_policy_service),
+    read_protected_apps_service: ReadProtectedAppsService = Depends(get_read_protected_apps_service),
 ) -> AppSecurityPolicyController:
     '''
     Dependency injection function that provides an AppSecurityPolicyController instance.
     '''
-    return AppSecurityPolicyController(read_app_security_policies_service)
+    return AppSecurityPolicyController(
+        create_app_security_policy_service,
+        read_app_security_policies_service,
+        read_protected_apps_service,
+    )
 
 def get_flagged_requests_controller(
         read_flagged_requests_service: ReadFlaggedRequestsService = Depends(get_read_flagged_requests_service),
