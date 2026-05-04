@@ -23,8 +23,8 @@ if (createProtectedAppForm) {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to create protected app');
+        const errorJSON = await response.json(); // really we should expect the API to always return JSON responses
+        throw new Error(errorJSON.hasOwnProperty('detail') ? `Error: ${errorJSON.detail}` : 'Failed to create protected app');
       }
 
       const protectedApp = await response.json();

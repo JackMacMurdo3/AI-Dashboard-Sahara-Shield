@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sahara Shield | Create App Security Policy</title>
+    <link rel="stylesheet" href="/static/css/create_policy.css">
+    <script defer src="/static/js/create_policy.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <section class="create-policy-card" aria-labelledby="create-policy-title">
+        <div id="back-links-container">
+          <a href="/" class="back-link">← Back to Apps</a>
+        </div>
+        <p class="page-kicker">App Security Policy</p>
+        <h1 id="create-policy-title">Create a New Security Policy</h1>
+        <p class="subtitle">Define protection rules for your application endpoints.</p>
+
+        <form id="create-policy-form" class="create-policy-form">
+          <label>
+            <span>Policy Name (Optional)</span>
+            <input id="name" name="name" type="text" placeholder="e.g., Admin Protection">
+          </label>
+
+          <label>
+            <span>HTTP Method</span>
+            <select id="http_method" name="http_method" required>
+              <option value="">Select a method...</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+              <option value="PATCH">PATCH</option>
+              <option value="HEAD">HEAD</option>
+              <option value="OPTIONS">OPTIONS</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Route Pattern</span>
+            <input
+              id="route_pattern"
+              name="route_pattern"
+              type="text"
+              placeholder="/api/v1/users/{id:int}"
+              required
+            >
+            <small class="helper-text">Use Starlette path templates like /api/resource/{id:int}</small>
+          </label>
+
+          <label>
+            <span>Mode</span>
+            <select id="mode" name="mode" required>
+              <option value="">Select a mode...</option>
+              <option value="MONITOR">MONITOR</option>
+              <option value="ENFORCE">ENFORCE</option>
+            </select>
+            <small class="helper-text">MONITOR only logs suspicious activity, ENFORCE logs & blocks it</small>
+          </label>
+
+          <label>
+            <span>Block Score Threshold</span>
+            <input
+              id="min_block_score"
+              name="min_block_score"
+              type="number"
+              min="0"
+              max="100"
+              value="70"
+              required
+            >
+            <small class="helper-text">Requests scoring above this will be actioned (0-100)</small>
+          </label>
+
+          <label>
+            <span>Priority</span>
+            <input
+              id="priority"
+              name="priority"
+              type="number"
+              min="1"
+              value="100"
+              required
+            >
+            <small class="helper-text">Higher numbers have higher priority</small>
+          </label>
+
+          <label class="checkbox-label">
+            <input id="active" name="active" type="checkbox" checked>
+            <span>Active</span>
+          </label>
+
+          <p id="error-message" class="error" role="alert" aria-live="polite"></p>
+
+          <button type="submit" class="primary-button">Create Policy</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

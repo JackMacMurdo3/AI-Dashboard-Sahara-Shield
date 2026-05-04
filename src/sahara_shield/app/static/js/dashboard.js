@@ -5,6 +5,7 @@ const errorMessage = document.getElementById('error-message');
 const tabNavigation = document.querySelector('.tab-navigation');
 const tabContent = document.querySelector('.tab-content');
 const policiesTable = document.getElementById('policies-table');
+const createPolicyButton = document.getElementById('create-policy-button');
 
 function getProtectedAppIdFromUrl() {
   const pathParts = window.location.pathname.split('/').filter(Boolean);
@@ -201,6 +202,13 @@ function initializeTabs() {
   const tabPanels = document.querySelectorAll('.tab-panel');
   const protectedAppId = getProtectedAppIdFromUrl();
 
+  // Set up create policy button
+  if (createPolicyButton) {
+    createPolicyButton.addEventListener('click', () => {
+      window.location.href = `/protected_apps/${protectedAppId}/policies/new`;
+    });
+  }
+
   tabButtons.forEach((button) => {
     button.addEventListener('click', async () => {
       // remove active state from all buttons and panels
@@ -226,7 +234,16 @@ function initializeTabs() {
         correspondingPanel.removeAttribute('hidden');
 
         if (tabName === 'policies' && protectedAppId) {
+          // Show the create policy button when policies tab is active
+          if (createPolicyButton) {
+            createPolicyButton.style.display = 'inline-block';
+          }
           await loadProtectedAppPolicies(protectedAppId);
+        } else {
+          // Hide the create policy button for other tabs
+          if (createPolicyButton) {
+            createPolicyButton.style.display = 'none';
+          }
         }
 
         // load events summary when events tab is clicked

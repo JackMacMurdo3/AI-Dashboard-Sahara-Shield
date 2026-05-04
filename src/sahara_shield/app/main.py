@@ -83,7 +83,7 @@ async def dashboard_protected_app_policy_page(
     return responses.FileResponse(str(STATIC_DIR / 'html/policy_detail.html'))
 
 @app.get('/protected_apps/new', response_class=responses.FileResponse)
-def protected_app_create_page(user: CurrentUserDep):
+def protected_app_create_page(user:CurrentUserDep):
     '''
     API route to fetch the protected app creation page HTML.
 
@@ -91,3 +91,20 @@ def protected_app_create_page(user: CurrentUserDep):
     '''
 
     return responses.FileResponse(str(STATIC_DIR / 'html/create_protected_app.html'))
+
+@app.get('/protected_apps/{protected_app_id}/policies/new', response_class=responses.FileResponse)
+async def protected_app_create_policy_page(
+    user:CurrentUserDep, 
+    protected_app_id:int,
+    protected_app_controller: ProtectedAppControllerDep,
+    ):
+    '''
+    API route to fetch the policy creation page HTML for a protected app.
+    
+    Protected route - user must be logged in and own the protected app to access
+    '''
+    
+    # validate protected app existence/ownership
+    await protected_app_controller.get_user_protected_app_by_id(user, protected_app_id)
+
+    return responses.FileResponse(str(STATIC_DIR / 'html/create_policy.html'))

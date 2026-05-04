@@ -1,0 +1,143 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #f7f7f9;
+  color: #1d1d21;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+}
+
+.create-policy-card {
+  width: 100%;
+  max-width: 560px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+#back-links-container {
+  display: flex;
+  flex-direction: row;
+  column-gap: 1rem;
+}
+
+.back-link {
+  color: #1f2937;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.page-kicker {
+  margin: 1rem 0 0.35rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.95rem;
+}
+
+.create-policy-form {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.create-policy-form label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.create-policy-form span {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.create-policy-form input,
+.create-policy-form select,
+.primary-button {
+  font: inherit;
+  padding: 0.8rem 0.9rem;
+  border-radius: 8px;
+}
+
+.create-policy-form input,
+.create-policy-form select {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+}
+
+.create-policy-form input:focus,
+.create-policy-form select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.helper-text {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.2rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  cursor: pointer;
+}
+
+.primary-button {
+  margin-top: 0.5rem;
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.primary-button:hover {
+  background: #2563eb;
+}
+
+.primary-button:active {
+  background: #1d4ed8;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+}

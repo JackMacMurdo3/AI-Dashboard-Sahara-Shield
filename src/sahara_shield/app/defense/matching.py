@@ -69,5 +69,5 @@ def match_app_security_policies(
 			policy.priority,
 			policy.id,
 		),
-		reverse=True,
+		reverse=True, # descending order, so higher priority come first
 	)
