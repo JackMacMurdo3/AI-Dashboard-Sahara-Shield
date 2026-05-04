@@ -155,7 +155,7 @@ class AppSecurityPolicyFactory(SQLAlchemyModelFactory):
     mode = factory.fuzzy.FuzzyChoice(PolicyModes)
     active = factory.fuzzy.FuzzyChoice([True, False])
     priority = factory.Faker('pyint', min_value=0, max_value=100)
-    min_block_score = factory.Faker('pyint', min_value=0, max_value=100)
+    action_score_threshold = factory.Faker('pyint', min_value=0, max_value=100)
     created_at = factory.fuzzy.FuzzyDateTime(
         datetime(2022, 1, 1, tzinfo=timezone.utc), 
         end_dt=datetime(2026, 1, 1, tzinfo=timezone.utc),
@@ -276,13 +276,8 @@ def generate_seed_app_security_policies(n:int=10, protected_apps:list[ProtectedA
 def generate_seed_flagged_requests(n:int=10, app_security_policies:list[AppSecurityPolicy]=[]) -> list[FlaggedRequest]:
     '''
     Generates n seed flagged request instances.
-
-    Args:
-        n (int): The number of flagged request instances to generate.
-        app_security_policies (list): A list of app security policy objects to associate with.
-    Returns:
-        flagged_requests (list): A list of n flagged request instances.
     '''
+    
     flagged_requests: list[FlaggedRequest] = FlaggedRequestFactory.build_batch(n)
 
     if not app_security_policies: return flagged_requests # no app security policy objects provided, return flagged requests as-is

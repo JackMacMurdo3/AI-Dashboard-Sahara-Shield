@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from sahara_shield.app.model.enums import SecurityActions, ThreatSeverities, ThreatTypes
 
 class InterceptedRequest(BaseModel):
     '''
@@ -14,16 +15,29 @@ class InterceptedRequest(BaseModel):
     body: str = ''
     source_ip: str | None = None
 
+class AnalysisFindings(BaseModel):
+    '''
+    Represents the output of a request analysis engine.
+    These findings are the input contract for decision engines.
+    '''
+    
+    upstream_app_id: int
+    upstream_app_url: str
+    threat_type: ThreatTypes
+    threat_severity: ThreatSeverities
+    severity_score: int = Field(ge=0, le=100)
+    confidence_pct: int = Field(ge=0, le=100)
+
 class SecurityDecision(BaseModel):
     '''
     Represents a security-related decision made by the defense system
-    upon analysis of an intercepted HTTP request.
+    from upstream analysis findings.
     '''
 
     upstream_app_id: int
     upstream_app_url: str
-    allow: bool
-    action: str
+    action: SecurityActions
     status_code: int
     reason: str
     risk_score: int = Field(ge=0, le=100)
+    

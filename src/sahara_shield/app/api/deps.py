@@ -22,11 +22,15 @@ from sahara_shield.app.controllers import (
     SecurityDecisionController,
 )
 from sahara_shield.app.model.orm import User
-from sahara_shield.app.defense.decision_engine import (
+from sahara_shield.app.defense.analysis_engines import (
+    AnalysisEngine,
+    analysis_engine_registry,
+)
+from sahara_shield.app.defense.decision_engines import (
     DecisionEngine,
     decision_engine_registry
 )
-from sahara_shield.app.model.enums import DecisionEngineKeys
+from sahara_shield.app.model.enums import AnalysisEngineKeys, DecisionEngineKeys
 
 def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
     '''
@@ -70,6 +74,20 @@ def get_read_flagged_requests_service(db_session:AsyncSession=Depends(db_session
 
 def get_read_security_events_service(db_session:AsyncSession=Depends(db_session_mngr)):
     return ReadSecurityEventsService(db_session)
+
+def get_default_analysis_engine_key() -> AnalysisEngineKeys:
+    registered_keys = list(analysis_engine_registry.keys())
+
+    if not registered_keys:
+        raise HTTPException(status_code=500, detail='No analysis engines registered')
+
+    return registered_keys[0]
+
+def get_analysis_engine_registry() -> dict[AnalysisEngineKeys, type[AnalysisEngine]]:
+    '''
+    Dependency injection function that provides the analysis engine registry.
+    '''
+    return analysis_engine_registry
 
 async def get_current_user(
         session_id:str=Cookie(default=''), 
@@ -165,7 +183,9 @@ def get_auth_controller(
 def get_security_decision_controller(
         read_protected_apps_service: ReadProtectedAppsService = Depends(get_read_protected_apps_service),
         read_app_security_policies_service: ReadAppSecurityPoliciesService = Depends(get_read_app_security_policies_service),
-        decision_engine_registry: dict[DecisionEngineKeys, DecisionEngine] = Depends(get_decision_engine_registry),
+        analysis_engine_registry: dict[AnalysisEngineKeys, type[AnalysisEngine]] = Depends(get_analysis_engine_registry),
+        default_analysis_engine_key: AnalysisEngineKeys = Depends(get_default_analysis_engine_key),
+        decision_engine_registry: dict[DecisionEngineKeys, type[DecisionEngine]] = Depends(get_decision_engine_registry),
         default_decision_engine_key: DecisionEngineKeys = Depends(get_default_decision_engine_key),
         ) -> SecurityDecisionController:
     '''
@@ -174,6 +194,8 @@ def get_security_decision_controller(
     return SecurityDecisionController(
         read_protected_apps_service,
         read_app_security_policies_service,
+        analysis_engine_registry,
+        default_analysis_engine_key,
         decision_engine_registry,
         default_decision_engine_key,
     )

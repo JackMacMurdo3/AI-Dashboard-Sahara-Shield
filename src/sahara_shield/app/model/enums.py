@@ -1,5 +1,5 @@
 import enum
-from enum import StrEnum, IntEnum
+from enum import StrEnum
 
 class UserRoles(StrEnum):
     '''
@@ -34,13 +34,20 @@ class RoutePatternDatatypes(StrEnum):
     STR = enum.auto()
     PATH = enum.auto()
 
-class DecisionEngineKeys(StrEnum):
+class AnalysisEngineKeys(StrEnum):
     '''
-    Identifies which decision engine should analyze a request for a policy.
+    Identifies which analysis engine to use when processing intercepted HTTP requests like from a reverse proxy.
     '''
 
+    OPTIMIST = enum.auto()
+
+class DecisionEngineKeys(StrEnum):
+    '''
+    Identifies which decision engine to use when processing security findings via an analysis engine.
+    '''
+
+    PERMISSIVE = enum.auto()
     RANDOM = enum.auto()
-    AI = enum.auto()
 
 class ThreatTypes(StrEnum):
     NONE = enum.auto()
@@ -59,18 +66,6 @@ class ThreatSeverities(StrEnum):
     MODERATE = enum.auto()
     HIGH = enum.auto()
     CRITICAL = enum.auto()
-
-class SeverityScores(IntEnum):
-    '''
-    Numeric score mapping for severity classifications. Use with confidence
-    values to compute a final request block score.
-    '''
-
-    NONE = 0
-    LOW = 25
-    MODERATE = 50
-    HIGH = 75
-    CRITICAL = 100
 
 class SecurityActions(StrEnum):
     '''

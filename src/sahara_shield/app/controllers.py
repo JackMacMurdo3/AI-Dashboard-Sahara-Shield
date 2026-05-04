@@ -19,11 +19,13 @@ from sahara_shield.app.model.marshal import (
 from sahara_shield.app.model.orm import User, AppSecurityPolicy
 from sahara_shield.app.model.enums import (
     ThreatSeverities, ThreatTypes,
+    AnalysisEngineKeys,
     DecisionEngineKeys,
     PolicyModes, HTTPMethods,
 )
 from sahara_shield.app.core.config import AppSettings
-from sahara_shield.app.defense.decision_engine import DecisionEngine
+from sahara_shield.app.defense.analysis_engines import AnalysisEngine
+from sahara_shield.app.defense.decision_engines import DecisionEngine
 from sahara_shield.app.defense.marshal import InterceptedRequest, SecurityDecision
 from sahara_shield.app.defense.matching import match_app_security_policies
 
@@ -120,7 +122,7 @@ class AppSecurityPolicyController(Controller):
         decision_engine_key: str | None = None,
         active: bool = True,
         priority: int = 100,
-        min_block_score: int = 70,
+        action_score_threshold: int = 70,
     ):
         # verify protected app belongs to user
         protected_app = await self.read_protected_apps_service.read_by_id_and_owner_user_id(
@@ -166,7 +168,7 @@ class AppSecurityPolicyController(Controller):
                 decision_engine_key=decision_engine_enum,
                 active=active,
                 priority=priority,
-                min_block_score=min_block_score,
+                action_score_threshold=action_score_threshold,
             )
 
             return self.schema.dump(policy)
@@ -382,13 +384,33 @@ class SecurityDecisionController(Controller):
             self,
             read_protected_apps_service:ReadProtectedAppsService,
             read_app_security_policies_service: ReadAppSecurityPoliciesService,
+            analysis_engine_registry: dict[AnalysisEngineKeys, type[AnalysisEngine]],
+            default_analysis_engine_key: AnalysisEngineKeys,
             decision_engine_registry: dict[DecisionEngineKeys, DecisionEngine],
             default_decision_engine_key: DecisionEngineKeys,
             ):
         self.read_protected_apps_service = read_protected_apps_service
         self.read_app_security_policies_service = read_app_security_policies_service
+        self.analysis_engine_registry = analysis_engine_registry
+        self.default_analysis_engine_key = default_analysis_engine_key
         self.decision_engine_registry = decision_engine_registry
         self.default_decision_engine_key = default_decision_engine_key
+
+    def _resolve_analysis_engine(self, app_security_policy: AppSecurityPolicy | None = None) -> AnalysisEngine:
+        '''
+        Select the engine associated with a matched policy, falling back to the default engine.
+        '''
+
+        if len(self.analysis_engine_registry) == 0:
+            raise HTTPException(status_code=500, detail='Server error: no analysis engines registered')
+
+        default_engine = self.analysis_engine_registry[self.default_analysis_engine_key]
+
+        analysis_engine_key = getattr(app_security_policy, 'analysis_engine_key', None)
+        if analysis_engine_key is not None:
+            return self.analysis_engine_registry.get(analysis_engine_key, default_engine)
+
+        return default_engine
 
     def _resolve_decision_engine(self, app_security_policy: AppSecurityPolicy | None = None) -> DecisionEngine:
         '''
@@ -425,6 +447,22 @@ class SecurityDecisionController(Controller):
         )
 
         app_security_policy = app_security_policies[0] if app_security_policies else None
+
+        analysis_engine: AnalysisEngine = self._resolve_analysis_engine(app_security_policy)() # instantiate analysis engine
+        findings = await analysis_engine.analyze(req, protected_app)
+        
+        # check decision risk score against policy action score threshold
+        # if decision risk score is higher and policy in enforce mode
+        #   execute action
+        #   create flagged request
+        #   create security event
+        # if decision risk score is higher and policy in monitor mode
+        #   take no action
+        #   create flagged request
+        # if decision risk score is lower
+        #   take no action
         
         decision_engine: DecisionEngine = self._resolve_decision_engine(app_security_policy)() # instantiate decision engine
-        return await decision_engine.decide(req, protected_app)
+        decision = await decision_engine.decide(findings)
+
+        return decision

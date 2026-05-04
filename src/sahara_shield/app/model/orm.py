@@ -22,7 +22,7 @@ from sqlalchemy import (
 from sahara_shield.app.model.enums import (
     UserRoles, HTTPMethods, PolicyModes, 
     ThreatSeverities, SecurityActions, ThreatTypes,
-    DecisionEngineKeys,
+    DecisionEngineKeys, AnalysisEngineKeys
 )
 from datetime import datetime, timezone
 from sqlalchemy.inspection import inspect
@@ -226,8 +226,8 @@ class AppSecurityPolicy(Base):
             name='priority_range',
         ),
         CheckConstraint(
-            'min_block_score >= 0 AND min_block_score <= 100',
-            name='min_block_score_range',
+            'action_score_threshold >= 0 AND action_score_threshold <= 100',
+            name='action_score_threshold_range',
         ),
     )
 
@@ -237,6 +237,11 @@ class AppSecurityPolicy(Base):
     http_method: Mapped[HTTPMethods] = mapped_column(Enum(HTTPMethods), nullable=False)
     route_pattern: Mapped[str] = mapped_column(String(255), nullable=False)
     mode: Mapped[PolicyModes] = mapped_column(Enum(PolicyModes), nullable=False, default=PolicyModes.MONITOR)
+    analysis_engine_key: Mapped[AnalysisEngineKeys] = mapped_column(
+        Enum(AnalysisEngineKeys),
+        nullable=False,
+        default=AnalysisEngineKeys.OPTIMIST,
+    )
     decision_engine_key: Mapped[DecisionEngineKeys] = mapped_column(
         Enum(DecisionEngineKeys),
         nullable=False,
@@ -245,7 +250,7 @@ class AppSecurityPolicy(Base):
     active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True)
     active_status_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     priority: Mapped[int] = mapped_column(Integer(), nullable=False, default=100)
-    min_block_score: Mapped[int] = mapped_column(Integer(), nullable=False, default=70)
+    action_score_threshold: Mapped[int] = mapped_column(Integer(), nullable=False, default=70)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
 
@@ -256,15 +261,15 @@ class AppSecurityPolicy(Base):
 
         return value
 
-    @validates('min_block_score')
-    def validate_min_block_score(self, key, value):
+    @validates('action_score_threshold')
+    def validate_action_score_threshold(self, key, value):
         if value < 0 or value > 100:
-            raise ValueError('min_block_score must be within [0, 100]')
+            raise ValueError('action_score_threshold must be within [0, 100]')
 
         return value
     
     def should_block(self, risk_score:int):
-        return risk_score >= self.min_block_score
+        return risk_score >= self.action_score_threshold
     
     @classmethod
     def __declare_last__(cls):
@@ -286,7 +291,7 @@ class AppSecurityPolicy(Base):
 
 class FlaggedRequest(Base):
     '''
-    Represents an HTTP request flagged in some way as suspicious/malicious.
+    Represents an HTTP request flagged as suspicious/malicious.
     '''
 
     __tablename__ = 'flagged_requests'

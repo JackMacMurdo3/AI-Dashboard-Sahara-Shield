@@ -95,7 +95,7 @@ async function loadPolicyDetail() {
       ['Mode', policy.mode],
       ['Status', policy.active ? 'Active' : 'Inactive'],
       ['Priority', policy.priority],
-      ['Min Block Score', policy.min_block_score],
+      ['Action Score Threshold', policy.action_score_threshold],
     ].forEach(([label, value]) => {
       policyDetailFields.appendChild(createFieldRow(label, value));
     });

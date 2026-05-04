@@ -150,7 +150,7 @@ def create_app(cfg: ProxyConfig) -> FastAPI:
             decision = defense_resp.json()
             logger.info('Defense decision: %s', decision)
 
-            if not bool(decision.get('allow')):
+            if not bool(decision.get('action') == "allow"):
                 status_code = int(decision.get('status_code', 403))
                 reason = str(decision.get('reason', 'Blocked by defense decision'))
                 return JSONResponse(status_code=status_code, content={'detail': reason})

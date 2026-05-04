@@ -197,7 +197,7 @@ class CreateAppSecurityPolicyService(Service):
         decision_engine_key:DecisionEngineKeys|None=None,
         active:bool=True,
         priority:int=100,
-        min_block_score:int=70,
+        action_score_threshold:int=70,
     ) -> AppSecurityPolicy:
         try:
             app_security_policy = AppSecurityPolicy(
@@ -209,7 +209,7 @@ class CreateAppSecurityPolicyService(Service):
                 decision_engine_key=decision_engine_key,
                 active=active,
                 priority=priority,
-                min_block_score=min_block_score,
+                action_score_threshold=action_score_threshold,
             )
 
             self.db_session.add(app_security_policy)

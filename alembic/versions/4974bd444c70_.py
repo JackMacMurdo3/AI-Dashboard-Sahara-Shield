@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 2ec144d59e61
+Revision ID: 4974bd444c70
 Revises: 
-Create Date: 2026-04-30 18:04:52.784025
+Create Date: 2026-05-04 18:36:09.733759
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '2ec144d59e61'
+revision: str = '4974bd444c70'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -65,13 +65,15 @@ def upgrade() -> None:
     sa.Column('http_method', sa.Enum('GET', 'POST', 'PUT', 'PATCH', 'DELETE', name='httpmethods'), nullable=False),
     sa.Column('route_pattern', sa.String(length=255), nullable=False),
     sa.Column('mode', sa.Enum('MONITOR', 'ENFORCE', name='policymodes'), nullable=False),
+    sa.Column('analysis_engine_key', sa.Enum('OPTIMIST', name='analysisenginekeys'), nullable=False),
+    sa.Column('decision_engine_key', sa.Enum('PERMISSIVE', 'RANDOM', name='decisionenginekeys'), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('active_status_changed_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('priority', sa.Integer(), nullable=False),
-    sa.Column('min_block_score', sa.Integer(), nullable=False),
+    sa.Column('action_score_threshold', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
-    sa.CheckConstraint('min_block_score >= 0 AND min_block_score <= 100', name=op.f('ck_app_security_policies_min_block_score_range')),
+    sa.CheckConstraint('action_score_threshold >= 0 AND action_score_threshold <= 100', name=op.f('ck_app_security_policies_action_score_threshold_range')),
     sa.CheckConstraint('priority >= 0 AND priority <= 100', name=op.f('ck_app_security_policies_priority_range')),
     sa.ForeignKeyConstraint(['protected_app_id'], ['protected_apps.id'], name=op.f('fk_app_security_policies_protected_app_id_protected_apps')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_app_security_policies')),
@@ -99,7 +101,7 @@ def upgrade() -> None:
     sa.Column('threat_severity', sa.Enum('NONE', 'LOW', 'MODERATE', 'HIGH', 'CRITICAL', name='threatseverities'), nullable=False),
     sa.Column('confidence_pct', sa.Integer(), nullable=False),
     sa.Column('risk_score', sa.Integer(), nullable=False),
-    sa.Column('action', sa.Enum('ALLOW', 'BLOCK', 'MONITOR_ONLY', name='securityactions'), nullable=False),
+    sa.Column('action', sa.Enum('ALLOW', 'BLOCK', name='securityactions'), nullable=False),
     sa.Column('reason_desc', sa.String(length=1500), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),

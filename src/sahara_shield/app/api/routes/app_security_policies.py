@@ -39,7 +39,7 @@ async def create_app_security_policy(
     decision_engine_key: str | None = None,
     active: bool = True,
     priority: int = 100,
-    min_block_score: int = 70,
+    action_score_threshold: int = 70,
 ):
     return await controller.create_app_security_policy(
         user,
@@ -51,5 +51,5 @@ async def create_app_security_policy(
         decision_engine_key,
         active,
         priority,
-        min_block_score,
+        action_score_threshold,
     )

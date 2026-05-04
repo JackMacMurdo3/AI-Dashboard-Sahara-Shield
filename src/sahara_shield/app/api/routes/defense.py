@@ -7,7 +7,7 @@ defense_router = APIRouter(
     tags=['defense'],
 )
 
-@defense_router.post('/check', response_model=SecurityDecision)
+@defense_router.post('/decision', response_model=SecurityDecision)
 async def check_request(
     req: InterceptedRequest,
     security_decision_controller: SecurityDecisionControllerDep,
