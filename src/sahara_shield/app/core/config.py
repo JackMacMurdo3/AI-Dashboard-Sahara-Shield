@@ -34,6 +34,9 @@ class AppSettings(BaseSettings):
     PASSWORD_MIN_LEN: int = 12
     PASSWORD_MAX_LEN: int = 64
 
+    LLM_GEMINI_API_KEY: str = ''
+    LLM_GEMINI_MODEL: str = ''
+    
     def make_mysql_db_url(self) -> str:
         '''
         Creates a MySQL database URL string from configuration information

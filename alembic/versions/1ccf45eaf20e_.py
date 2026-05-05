@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: c791b77f7291
+Revision ID: 1ccf45eaf20e
 Revises: 
-Create Date: 2026-05-04 22:25:22.315456
+Create Date: 2026-05-05 14:16:12.973086
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'c791b77f7291'
+revision: str = '1ccf45eaf20e'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -60,7 +60,7 @@ def upgrade() -> None:
     sa.Column('http_method', sa.Enum('GET', 'POST', 'PUT', 'PATCH', 'DELETE', name='httpmethods'), nullable=False),
     sa.Column('route_pattern', sa.String(length=255), nullable=False),
     sa.Column('mode', sa.Enum('MONITOR', 'ENFORCE', name='policymodes'), nullable=False),
-    sa.Column('analysis_engine_key', sa.Enum('OPTIMISTIC', 'RANDOM', name='analysisenginekeys'), nullable=False),
+    sa.Column('analysis_engine_key', sa.Enum('OPTIMISTIC', 'RANDOM', 'LLM_GEMINI', name='analysisenginekeys'), nullable=False),
     sa.Column('aggregation_strategy_key', sa.Enum('MAX', name='aggregationstrategykeys'), nullable=False),
     sa.Column('decision_engine_key', sa.Enum('PERMISSIVE', 'RANDOM', name='decisionenginekeys'), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
@@ -77,7 +77,7 @@ def upgrade() -> None:
     )
     op.create_table('flagged_requests',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('app_security_policy_id', sa.Integer(), nullable=False),
+    sa.Column('app_security_policy_id', sa.Integer(), nullable=True),
     sa.Column('observed_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('http_method', sa.Enum('GET', 'POST', 'PUT', 'PATCH', 'DELETE', name='httpmethods'), nullable=False),
     sa.Column('route_path', sa.String(length=255), nullable=False),
@@ -93,8 +93,8 @@ def upgrade() -> None:
     op.create_table('security_events',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('flagged_request_id', sa.Integer(), nullable=False),
-    sa.Column('threat_type', sa.Enum('NONE', 'UNKNOWN', 'SQLi', 'XSS', 'PATH_TRAVERSAL', name='threattypes'), nullable=False),
-    sa.Column('threat_severity', sa.Enum('NONE', 'LOW', 'MODERATE', 'HIGH', 'CRITICAL', name='threatseverities'), nullable=False),
+    sa.Column('threat_type', sa.Enum('UNKNOWN', 'NONE', 'SQLi', 'XSS', 'PATH_TRAVERSAL', name='threattypes'), nullable=False),
+    sa.Column('threat_severity', sa.Enum('UNKNOWN', 'NONE', 'LOW', 'MODERATE', 'HIGH', 'CRITICAL', name='threatseverities'), nullable=False),
     sa.Column('risk_score', sa.Integer(), nullable=False),
     sa.Column('action', sa.Enum('ALLOW', 'BLOCK', name='securityactions'), nullable=False),
     sa.Column('reason_desc', sa.String(length=1500), nullable=False),

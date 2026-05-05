@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import Depends, Cookie, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sahara_shield.app.core.db import db_session_mngr
-from sahara_shield.app.core.config import app_settings
+from sahara_shield.app.core.config import app_settings, AppSettings
 from sahara_shield.app.model.services import (
     ReadUsersService, UserAuthService, CurrentUserService,
 )
@@ -24,18 +24,17 @@ from sahara_shield.app.controllers import (
 )
 from sahara_shield.app.model.orm import User
 from sahara_shield.app.defense.analysis_engines import (
-    AnalysisEngine,
-    analysis_engine_registry,
+    AnalysisEngine, analysis_engine_registry,
 )
 from sahara_shield.app.defense.aggregation import (
-    AggregationStrategy,
-    aggregation_strategies_registry,
+    AggregationStrategy, aggregation_strategies_registry,
 )
 from sahara_shield.app.defense.decision_engines import (
-    DecisionEngine,
-    decision_engine_registry
+    DecisionEngine, decision_engine_registry
 )
-from sahara_shield.app.core.enums import AnalysisEngineKeys, AggregationStrategyKeys, DecisionEngineKeys
+from sahara_shield.app.core.enums import (
+    AnalysisEngineKeys, AggregationStrategyKeys, DecisionEngineKeys,
+)
 
 def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
     '''
@@ -216,6 +215,7 @@ def get_security_decision_controller(
     default_decision_engine_key: DecisionEngineKeys = Depends(get_default_decision_engine_key),
     aggregation_strategy_registry: dict[AggregationStrategyKeys, type[AggregationStrategy]] = Depends(get_aggregation_strategy_registry),
     default_aggregation_strategy_key: AggregationStrategyKeys = Depends(get_default_aggregation_strategy_key),
+    app_settings: AppSettings = Depends(get_app_settings),
     ) -> SecurityDecisionController:
     '''
     Dependency injection function that provides a SecurityDecisionController instance.
@@ -231,6 +231,7 @@ def get_security_decision_controller(
         default_decision_engine_key,
         aggregation_strategy_registry,
         default_aggregation_strategy_key,
+        app_settings=app_settings,
     )
 
 # service dependencies for external module use

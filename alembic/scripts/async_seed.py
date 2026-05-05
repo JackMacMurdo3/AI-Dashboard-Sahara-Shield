@@ -120,30 +120,35 @@ async def insert_seed_data(
             await conn.execute(text(f'TRUNCATE TABLE {ProtectedApp.__tablename__}'))
             await conn.execute(text(f'TRUNCATE TABLE {User.__tablename__}'))
 
-        try:
-            await conn.execute(insert(User), user_dicts)
-        except Exception as e:
-            raise Exception(f'Error inserting users: {e}')
+        if users:
+            try:
+                await conn.execute(insert(User), user_dicts)
+            except Exception as e:
+                raise Exception(f'Error inserting users: {e}')
         
-        try:
-            await conn.execute(insert(ProtectedApp), protected_app_dicts)
-        except Exception as e:
-            raise Exception(f'Error inserting protected apps: {e}')
+        if protected_apps:
+            try:
+                await conn.execute(insert(ProtectedApp), protected_app_dicts)
+            except Exception as e:
+                raise Exception(f'Error inserting protected apps: {e}')
         
-        try:
-            await conn.execute(insert(AppSecurityPolicy), app_security_policy_dicts)
-        except Exception as e:
-            raise Exception(f'Error inserting app security policies: {e}')
+        if app_security_policies:
+            try:
+                await conn.execute(insert(AppSecurityPolicy), app_security_policy_dicts)
+            except Exception as e:
+                raise Exception(f'Error inserting app security policies: {e}')
 
-        try:
-            await conn.execute(insert(FlaggedRequest), flagged_request_dicts)
-        except Exception as e:
-            raise Exception(f'Error inserting flagged requests: {e}')
+        if flagged_requests:
+            try:
+                await conn.execute(insert(FlaggedRequest), flagged_request_dicts)
+            except Exception as e:
+                raise Exception(f'Error inserting flagged requests: {e}')
 
-        try:
-            await conn.execute(insert(SecurityEvent), security_event_dicts)
-        except Exception as e:
-            raise Exception(f'Error inserting security events: {e}')
+        if security_events:
+            try:
+                await conn.execute(insert(SecurityEvent), security_event_dicts)
+            except Exception as e:
+                raise Exception(f'Error inserting security events: {e}')
 
         await conn.commit()
 

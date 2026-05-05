@@ -24,7 +24,7 @@ HOP_BY_HOP_HEADERS = {
     'upgrade',
 }
 
-DEFAULT_REQUEST_TIMEOUT = 15.0
+DEFAULT_REQUEST_TIMEOUT = 5.0
 
 @dataclass
 class ProxyConfig:

@@ -60,6 +60,27 @@
           </label>
 
           <label>
+            <span>Analysis Engine</span>
+            <select id="analysis_engine_key" name="analysis_engine_key" required>
+              <option value="">Select an analysis engine...</option>
+              <option value="OPTIMISTIC">Optimistic</option>
+              <option value="RANDOM">Random</option>
+              <option value="LLM_GEMINI">Gemini LLM</option>
+            </select>
+            <small class="helper-text">Analyzes requests and generates findings used to make security decisions.</small>
+          </label>
+
+          <label>
+            <span>Decision Engine</span>
+            <select id="decision_engine_key" name="decision_engine_key" required>
+              <option value="">Select a decision engine...</option>
+              <option value="RANDOM">Random</option>
+              <option value="PERMISSIVE">Permissive</option>
+            </select>
+            <small class="helper-text">Determines final security action to take based on request findings.</small>
+          </label>
+
+          <label>
             <span>Action Score Threshold</span>
             <input
               id="action_score_threshold"

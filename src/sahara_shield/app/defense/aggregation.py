@@ -24,11 +24,11 @@ def register_aggregation_strategy(name: AggregationStrategyKeys):
 
 class AggregationStrategy(ABC):
 	'''
-	Aggregates one or more analysis findings into a single (risk score, threat type, and threat severity) tuple.
+	Aggregates one or more analysis findings into one.
 	'''
 
 	@abstractmethod
-	async def aggregate(self, findings: Sequence[AnalysisFindings]) -> tuple[int, ThreatTypes, ThreatSeverities]:
+	async def aggregate(self, findings: Sequence[AnalysisFindings]) -> AnalysisFindings:
 		pass
 
 @register_aggregation_strategy(AggregationStrategyKeys.MAX)
@@ -46,4 +46,4 @@ class MaxAggregationStrategy(AggregationStrategy):
 			if max_finding is None or finding.risk_score > max_finding.risk_score:
 				max_finding = finding
 
-		return (max_finding.risk_score, max_finding.threat_type, max_finding.threat_severity)
+		return max_finding

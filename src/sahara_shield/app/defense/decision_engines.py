@@ -26,16 +26,16 @@ def register_decision_engine(name: DecisionEngineKeys):
     return decorator
 
 class DecisionEngine(ABC):
-    def __init__(self, aggregation_strategy: AggregationStrategy | None = None):
-        self.aggregation_strategy = aggregation_strategy or MaxAggregationStrategy()
+    def __init__(self, aggregation_strategy:AggregationStrategy):
+        self.aggregation_strategy = aggregation_strategy
 
     @abstractmethod
-    async def decide(self, findings: Sequence[AnalysisFindings]) -> SecurityDecision:
+    async def decide(self, findings: Sequence[AnalysisFindings], **kwargs) -> SecurityDecision:
         pass
 
 @register_decision_engine(DecisionEngineKeys.PERMISSIVE)
 class PermissiveDecisionEngine(DecisionEngine):
-    async def decide(self, findings: Sequence[AnalysisFindings]) -> SecurityDecision:
+    async def decide(self, findings: Sequence[AnalysisFindings], **kwargs) -> SecurityDecision:
         if len(findings) == 0:
             raise ValueError('No findings, at least 1 required!')
 
@@ -45,12 +45,17 @@ class PermissiveDecisionEngine(DecisionEngine):
         return SecurityDecision(
             upstream_app_id=first_finding.upstream_app_id,
             upstream_app_url=first_finding.upstream_app_url,
-            decided_threat_type=aggregated_findings[1],
-            decided_threat_severity=aggregated_findings[2],
+            analysis_engine_key=aggregated_findings.analysis_engine_key,
+            decision_engine_key=DecisionEngineKeys.PERMISSIVE,
+            aggregated_threat_type=aggregated_findings.threat_type,
+            aggregated_threat_severity=aggregated_findings.threat_severity,
             action=SecurityActions.ALLOW,
             status_code=200,
-            reason=f'Allowed!',
-            aggregated_risk_score=aggregated_findings[0],
+            reason=(
+                'Decision Engine: Allow always. '
+                f'Analysis Findings: {aggregated_findings.explanation}'
+                ),
+            aggregated_risk_score=aggregated_findings.risk_score,
         )
 
 @register_decision_engine(DecisionEngineKeys.RANDOM)
@@ -63,27 +68,27 @@ class RandomDecisionEngine(DecisionEngine):
         super().__init__(aggregation_strategy)
         self.rng = random.Random(seed)
 
-    async def decide(self, findings: Sequence[AnalysisFindings]) -> SecurityDecision:
+    async def decide(self, findings: Sequence[AnalysisFindings], **kwargs) -> SecurityDecision:
         if len(findings) == 0:
             raise ValueError('No findings, at least 1 required!')
-
-        first_finding = findings[0]
-
+        
         action = self.rng.choice(list(SecurityActions))
         blocked = (action == SecurityActions.BLOCK)
         aggregated_findings = await self.aggregation_strategy.aggregate(findings)
 
         return SecurityDecision(
-            upstream_app_id=first_finding.upstream_app_id,
-            upstream_app_url=first_finding.upstream_app_url,
-            decided_threat_type=aggregated_findings[1],
-            decided_threat_severity=aggregated_findings[2],
+            upstream_app_id=aggregated_findings.upstream_app_id,
+            upstream_app_url=aggregated_findings.upstream_app_url,
+            analysis_engine_key=aggregated_findings.analysis_engine_key,
+            decision_engine_key=DecisionEngineKeys.RANDOM,
+            aggregated_threat_type=aggregated_findings.threat_type,
+            aggregated_threat_severity=aggregated_findings.threat_severity,
             action=action,
             status_code=403 if blocked else 200,
             reason=(
-                f'Request was {action} actioned due to '
-                f'{aggregated_findings[2]} severity {aggregated_findings[1]} threat.'
-            ),
-            aggregated_risk_score=aggregated_findings[0],
+                'Decision Engine: Action randomly decided. '
+                f'Analysis Findings: {aggregated_findings.explanation}'
+                ),
+            aggregated_risk_score=aggregated_findings.risk_score,
         )
     

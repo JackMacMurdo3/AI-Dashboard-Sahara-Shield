@@ -44,6 +44,7 @@ class AnalysisEngineKeys(StrEnum):
 
     OPTIMISTIC = enum.auto()
     RANDOM = enum.auto()
+    LLM_GEMINI = enum.auto()
 
 class DecisionEngineKeys(StrEnum):
     '''
@@ -54,8 +55,8 @@ class DecisionEngineKeys(StrEnum):
     RANDOM = enum.auto()
 
 class ThreatTypes(StrEnum):
-    NONE = enum.auto()
     UNKNOWN = enum.auto()
+    NONE = enum.auto()
     SQLi = enum.auto()
     XSS = enum.auto()
     PATH_TRAVERSAL = enum.auto()
@@ -65,6 +66,7 @@ class ThreatSeverities(StrEnum):
     Stores severity classifications returned by threat analysis.
     '''
 
+    UNKNOWN = enum.auto()
     NONE = enum.auto()
     LOW = enum.auto()
     MODERATE = enum.auto()

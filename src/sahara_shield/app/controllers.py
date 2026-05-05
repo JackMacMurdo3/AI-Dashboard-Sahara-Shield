@@ -27,7 +27,7 @@ from sahara_shield.app.core.enums import (
 )
 from sahara_shield.app.core.config import AppSettings
 from sahara_shield.app.defense.aggregation import AggregationStrategy
-from sahara_shield.app.defense.analysis_engines import AnalysisEngine
+from sahara_shield.app.defense.analysis_engines import AnalysisEngine, GeminiLLMAnalysisEngine
 from sahara_shield.app.defense.decision_engines import DecisionEngine
 from sahara_shield.app.defense.marshal import InterceptedRequest, SecurityDecision
 from sahara_shield.app.defense.matching import match_app_security_policies
@@ -118,6 +118,7 @@ class AppSecurityPolicyController(Controller):
         route_pattern: str,
         name: str | None = None,
         mode: str | None = None,
+        analysis_engine_key: str | None = None,
         aggregation_strategy_key: str | None = None,
         decision_engine_key: str | None = None,
         active: bool = True,
@@ -146,6 +147,17 @@ class AppSecurityPolicyController(Controller):
             mode_enum = mode if (mode is None or isinstance(mode, PolicyModes)) else PolicyModes[mode]
         except Exception:
             raise HTTPException(status_code=400, detail='Invalid mode')
+
+        # convert analysis engine keys enum
+        try:
+            analysis_engine_key = analysis_engine_key.upper() if analysis_engine_key is not None else None
+            analysis_engine_enum = (
+                analysis_engine_key
+                if (analysis_engine_key is None or isinstance(analysis_engine_key, AnalysisEngineKeys))
+                else AnalysisEngineKeys[analysis_engine_key]
+            )
+        except Exception:
+            raise HTTPException(status_code=400, detail='Invalid analysis_engine_key')
 
         # convert aggregation strategy keys enum
         try:
@@ -176,6 +188,7 @@ class AppSecurityPolicyController(Controller):
                 http_method=http_method_enum,
                 route_pattern=route_pattern,
                 mode=mode_enum,
+                analysis_engine_key=analysis_engine_enum,
                 aggregation_strategy_key=aggregation_strategy_enum,
                 decision_engine_key=decision_engine_enum,
                 active=active,
@@ -307,13 +320,13 @@ class AuthController(Controller):
         except Exception:
             raise HTTPException(status_code=401, detail='Invalid email or password')
 
-        # reate and persist the auth session
+        # create and persist the auth session
         auth_session = await self.auth_service.create_auth_session(
             user_id, self.app_settings.AUTH_COOKIE_MAX_AGE, persist=True
         )
         await self.auth_service.save_changes()
 
-        #Set the authentication cookie
+        # set the authentication cookie
         self._set_auth_cookie(response, auth_session)
 
         return {
@@ -378,6 +391,7 @@ class SecurityDecisionController(Controller):
             default_decision_engine_key: DecisionEngineKeys,
             aggregation_strategy_registry: dict[AggregationStrategyKeys, type[AggregationStrategy]],
             default_aggregation_strategy_key: AggregationStrategyKeys,
+            app_settings:AppSettings,
             ):
         self.read_protected_apps_service = read_protected_apps_service
         self.read_app_security_policies_service = read_app_security_policies_service
@@ -389,6 +403,7 @@ class SecurityDecisionController(Controller):
         self.default_decision_engine_key = default_decision_engine_key
         self.aggregation_strategy_registry = aggregation_strategy_registry
         self.default_aggregation_strategy_key = default_aggregation_strategy_key
+        self.app_settings = app_settings
 
     def _resolve_analysis_engine(self, app_security_policy: AppSecurityPolicy | None = None) -> AnalysisEngine:
         '''
@@ -398,13 +413,25 @@ class SecurityDecisionController(Controller):
         if len(self.analysis_engine_registry) == 0:
             raise HTTPException(status_code=500, detail='Server error: no analysis engines registered')
 
-        default_engine = self.analysis_engine_registry[self.default_analysis_engine_key]
+        engine = self.analysis_engine_registry[self.default_analysis_engine_key]
 
         analysis_engine_key = getattr(app_security_policy, 'analysis_engine_key', None)
         if analysis_engine_key is not None:
-            return self.analysis_engine_registry.get(analysis_engine_key, default_engine)
+            engine = self.analysis_engine_registry.get(analysis_engine_key, engine)
 
-        return default_engine
+        if issubclass(engine, GeminiLLMAnalysisEngine):
+            if not self.app_settings.LLM_GEMINI_API_KEY or not self.app_settings.LLM_GEMINI_MODEL:
+                raise HTTPException(
+                    status_code=500,
+                    detail='Server error: Gemini analysis engine requires LLM_GEMINI_API_KEY and LLM_GEMINI_MODEL',
+                )
+
+            return engine(
+                api_key=self.app_settings.LLM_GEMINI_API_KEY,
+                model=self.app_settings.LLM_GEMINI_MODEL,
+            )
+
+        return engine()
 
     def _resolve_decision_engine(self, app_security_policy: AppSecurityPolicy | None = None) -> DecisionEngine:
         '''
@@ -458,7 +485,7 @@ class SecurityDecisionController(Controller):
 
         app_security_policy = app_security_policies[0] if app_security_policies else None
 
-        analysis_engine: AnalysisEngine = self._resolve_analysis_engine(app_security_policy)() # instantiate analysis engine
+        analysis_engine: AnalysisEngine = self._resolve_analysis_engine(app_security_policy)
         findings = [await analysis_engine.analyze(req, protected_app)]
         
         aggregation_strategy = self._resolve_aggregation_strategy(app_security_policy)
@@ -489,32 +516,63 @@ class SecurityDecisionController(Controller):
             if policy_mode == PolicyModes.ENFORCE:
                 await self.create_security_event_service.create(
                     flagged_request_id=flagged_request.id,
-                    threat_type=decision.decided_threat_type,
-                    threat_severity=decision.decided_threat_severity,
+                    threat_type=decision.aggregated_threat_type,
+                    threat_severity=decision.aggregated_threat_severity,
                     risk_score=decision.aggregated_risk_score,
                     action=decision.action,
                     reason_desc=decision.reason,
                 )
-                return decision
 
+                return SecurityDecision(
+                    upstream_app_id=decision.upstream_app_id,
+                    upstream_app_url=decision.upstream_app_url,
+                    analysis_engine_key=decision.analysis_engine_key,
+                    decision_engine_key=decision.decision_engine_key,
+                    aggregated_threat_type=decision.aggregated_threat_type,
+                    aggregated_threat_severity=decision.aggregated_threat_severity,
+                    action=decision.action,
+                    status_code=decision.status_code,
+                    reason=(
+                        f'Protected App: {decision.upstream_app_id}. '
+                        f'Policy: {app_security_policy.id if app_security_policy is not None else '--'} ({app_security_policy.name if app_security_policy is not None else 'Default'}). '                        f'High-risk request identified. Enforcement action taken. '
+                        f'{decision.reason}'
+                        ),
+                    aggregated_risk_score=decision.aggregated_risk_score,
+                )
+
+            # monitor mode - no security event generated, since no action taken
             return SecurityDecision(
                 upstream_app_id=decision.upstream_app_id,
                 upstream_app_url=decision.upstream_app_url,
-                decided_threat_type=decision.decided_threat_type,
-                decided_threat_severity=decision.decided_threat_severity,
-                action=SecurityActions.ALLOW,
-                status_code=200,
-                reason='High-risk request was monitored; no enforcement action taken.',
+                analysis_engine_key=decision.analysis_engine_key,
+                decision_engine_key=decision.decision_engine_key,
+                aggregated_threat_type=decision.aggregated_threat_type,
+                aggregated_threat_severity=decision.aggregated_threat_severity,
+                action=SecurityActions.ALLOW, # ignore decision's action
+                status_code=200, # ignore decision's status code
+                reason=(
+                    f'Protected App: {decision.upstream_app_id}. '
+                    f'Policy: {app_security_policy.id if app_security_policy is not None else '--'} ({app_security_policy.name if app_security_policy is not None else 'Default'}). '                    f'High-risk request identified. Monitored only, no enforcement action taken. '
+                    f'{decision.reason}'
+                    ),
                 aggregated_risk_score=decision.aggregated_risk_score,
             )
-
+        
+        # low risk request, no need to create flagged request or security event
         return SecurityDecision(
             upstream_app_id=decision.upstream_app_id,
             upstream_app_url=decision.upstream_app_url,
-            decided_threat_type=decision.decided_threat_type,
-            decided_threat_severity=decision.decided_threat_severity,
+            analysis_engine_key=decision.analysis_engine_key,
+            decision_engine_key=decision.decision_engine_key,
+            aggregated_threat_type=decision.aggregated_threat_type,
+            aggregated_threat_severity=decision.aggregated_threat_severity,
             action=SecurityActions.ALLOW,
             status_code=200,
-            reason='Request risk score did not exceed policy threshold.',
+            reason=(
+                f'Protected App: {decision.upstream_app_id}. '
+                f'Policy: {app_security_policy.id if app_security_policy is not None else '--'} ({app_security_policy.name if app_security_policy is not None else 'Default'}). '
+                'Low-risk score request identified. No action taken. '
+                f'{decision.reason}'
+                ),
             aggregated_risk_score=decision.aggregated_risk_score,
         )

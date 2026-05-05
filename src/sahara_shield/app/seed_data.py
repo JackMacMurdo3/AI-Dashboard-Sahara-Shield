@@ -226,7 +226,7 @@ def generate_seed_users(n:int=10) -> list[User]:
 
 def generate_seed_protected_apps(n:int=10, users:list[User]=[]) -> list[ProtectedApp]:
     protected_apps: list[ProtectedApp] = ProtectedAppFactory.build_batch(n)
-
+    
     if not users: return protected_apps # no user objects provided, return protected apps as-is
 
     unchosen_protected_apps = set(protected_apps)

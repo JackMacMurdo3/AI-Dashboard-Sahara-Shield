@@ -93,6 +93,7 @@ async function loadPolicyDetail() {
       ['HTTP Method', policy.http_method],
       ['Route Pattern', policy.route_pattern],
       ['Mode', policy.mode],
+      ['Analysis Engine', policy.analysis_engine_key],
       ['Decision Engine', policy.decision_engine_key],
       ['Status', policy.active ? 'Active' : 'Inactive'],
       ['Priority', policy.priority],
