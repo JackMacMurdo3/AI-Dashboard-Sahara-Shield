@@ -122,12 +122,6 @@ class ProtectedAppFactory(SQLAlchemyModelFactory):
     name = factory.Faker('domain_word')
     url = factory.LazyAttribute(lambda obj: f'http://{obj.name}.{fake.tld()}')
     live = factory.fuzzy.FuzzyChoice([True, False])
-    risk_score_severity_score_weight = factory.LazyFunction(
-        lambda: round(random.randint(0, 100) / 100, 2)
-    )
-    risk_score_confidence_pct_weight = factory.LazyAttribute(
-        lambda obj: round(1 - obj.risk_score_severity_score_weight, 2)
-    )
     created_at = factory.fuzzy.FuzzyDateTime(
         datetime(2022, 1, 1, tzinfo=timezone.utc), 
         end_dt=datetime(2026, 1, 1, tzinfo=timezone.utc),
@@ -209,7 +203,6 @@ class SecurityEventFactory(SQLAlchemyModelFactory):
     flagged_request_id = factory.Faker('pyint', min_value=1)
     threat_type = factory.fuzzy.FuzzyChoice(ThreatTypes)
     threat_severity = factory.fuzzy.FuzzyChoice(ThreatSeverities)
-    confidence_pct = factory.Faker('pyint', min_value=0, max_value=100)
     risk_score = factory.Faker('pyint', min_value=0, max_value=100)
     action = factory.fuzzy.FuzzyChoice(SecurityActions)
     reason_desc = factory.LazyFunction(lambda: fake.sentence(nb_words=15))

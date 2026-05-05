@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 4974bd444c70
+Revision ID: 25afb901339a
 Revises: 
-Create Date: 2026-05-04 18:36:09.733759
+Create Date: 2026-05-04 20:45:29.300320
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '4974bd444c70'
+revision: str = '25afb901339a'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -47,13 +47,8 @@ def upgrade() -> None:
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('url', sa.String(length=255), nullable=False),
     sa.Column('live', sa.Boolean(), nullable=False),
-    sa.Column('risk_score_severity_score_weight', sa.Float(), nullable=False),
-    sa.Column('risk_score_confidence_pct_weight', sa.Float(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
-    sa.CheckConstraint('ABS(risk_score_severity_score_weight + risk_score_confidence_pct_weight - 1.0) <= 0.000001', name=op.f('ck_protected_apps_risk_score_weights_sum')),
-    sa.CheckConstraint('risk_score_confidence_pct_weight >= 0 AND risk_score_confidence_pct_weight <= 1', name=op.f('ck_protected_apps_risk_score_confidence_pct_weight_range')),
-    sa.CheckConstraint('risk_score_severity_score_weight >= 0 AND risk_score_severity_score_weight <= 1', name=op.f('ck_protected_apps_risk_score_severity_score_weight_range')),
     sa.ForeignKeyConstraint(['owner_user_id'], ['users.id'], name=op.f('fk_protected_apps_owner_user_id_users')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_protected_apps')),
     sa.UniqueConstraint('owner_user_id', 'name', 'url', name=op.f('uq_protected_apps_owner_user_id'))
@@ -99,13 +94,11 @@ def upgrade() -> None:
     sa.Column('flagged_request_id', sa.Integer(), nullable=False),
     sa.Column('threat_type', sa.Enum('NONE', 'UNKNOWN', 'SQLi', 'XSS', 'PATH_TRAVERSAL', name='threattypes'), nullable=False),
     sa.Column('threat_severity', sa.Enum('NONE', 'LOW', 'MODERATE', 'HIGH', 'CRITICAL', name='threatseverities'), nullable=False),
-    sa.Column('confidence_pct', sa.Integer(), nullable=False),
     sa.Column('risk_score', sa.Integer(), nullable=False),
     sa.Column('action', sa.Enum('ALLOW', 'BLOCK', name='securityactions'), nullable=False),
     sa.Column('reason_desc', sa.String(length=1500), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
-    sa.CheckConstraint('confidence_pct >= 0 AND confidence_pct <= 100', name=op.f('ck_security_events_confidence_pct_range')),
     sa.CheckConstraint('risk_score >= 0 AND risk_score <= 100', name=op.f('ck_security_events_risk_score_range')),
     sa.ForeignKeyConstraint(['flagged_request_id'], ['flagged_requests.id'], name=op.f('fk_security_events_flagged_request_id_flagged_requests')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_security_events'))

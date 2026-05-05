@@ -59,8 +59,6 @@ class ProtectedAppController(Controller):
         user: User,
         name: str,
         url: str,
-        risk_score_severity_score_weight: float = 0.5,
-        risk_score_confidence_pct_weight: float = 0.5,
     ):
         '''
         Create a new protected app for the current user.
@@ -70,8 +68,6 @@ class ProtectedAppController(Controller):
                 owner_user_id=user.id,
                 name=name,
                 url=url,
-                risk_score_severity_score_weight=risk_score_severity_score_weight,
-                risk_score_confidence_pct_weight=risk_score_confidence_pct_weight,
             )
             return self.schema.dump(protected_app)
         except Exception as e:
@@ -271,32 +267,6 @@ class SecurityEventsController(Controller):
             threat_type_counts[threat_type.value] = count
 
         return threat_type_counts
-
-    async def get_user_protected_app_security_event_confidence_pct_stats(self, user:User, protected_app_id:int):
-        '''
-        Compute mean and median confidence percentages for security events of a protected app.
-        '''
-
-        pcts = await self.read_service.read_confidence_pcts_by_user_id_and_protected_app_id(
-            user.id,
-            protected_app_id,
-        )
-
-        if not pcts:
-            return {'mean': 0.0, 'median': 0.0}
-
-        total = sum(pcts)
-        n = len(pcts)
-        mean = total / n
-
-        # pcts are ordered ascending from the query
-        mid = n // 2
-        if n % 2 == 1:
-            median = float(pcts[mid])
-        else:
-            median = (pcts[mid - 1] + pcts[mid]) / 2.0
-
-        return {'mean': mean, 'median': median}
 
 class AuthController(Controller):
     '''

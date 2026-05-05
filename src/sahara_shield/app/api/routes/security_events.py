@@ -27,13 +27,7 @@ async def read_my_security_events_summary_by_protected_app_id(protected_app_id:i
         protected_app_id,
     )
 
-    confidence_pct_stats = await controller.get_user_protected_app_security_event_confidence_pct_stats(
-        user,
-        protected_app_id,
-    )
-
     return {
         'threat_severity_counts': threat_severity_counts,
         'threat_type_counts': threat_type_counts,
-        'confidence_pct_stats': confidence_pct_stats,
     }

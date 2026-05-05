@@ -94,8 +94,6 @@ class CreateProtectedAppService(Service):
         owner_user_id: int,
         name: str,
         url: str,
-        risk_score_severity_score_weight: float = 0.5,
-        risk_score_confidence_pct_weight: float = 0.5,
     ) -> ProtectedApp:
         '''
         Asynchronously create a new protected app for a user
@@ -106,8 +104,6 @@ class CreateProtectedAppService(Service):
                 owner_user_id=owner_user_id,
                 name=name,
                 url=url,
-                risk_score_severity_score_weight=risk_score_severity_score_weight,
-                risk_score_confidence_pct_weight=risk_score_confidence_pct_weight,
             )
             self.db_session.add(protected_app)
             await self.save_changes()
@@ -354,34 +350,6 @@ class ReadSecurityEventsService(Service):
         res: Result = await self.db_session.execute(stmt)
 
         rows = res.all()
-
-        return rows
-
-    async def read_confidence_pcts_by_user_id_and_protected_app_id(self, user_id:int, protected_app_id:int):
-        stmt = (
-            select(
-                SecurityEvent.confidence_pct,
-            )
-            .join(
-                FlaggedRequest, 
-                SecurityEvent.flagged_request_id == FlaggedRequest.id,
-            )
-            .join(
-                AppSecurityPolicy,
-                FlaggedRequest.app_security_policy_id == AppSecurityPolicy.id,
-            )
-            .join(
-                ProtectedApp, 
-                AppSecurityPolicy.protected_app_id == ProtectedApp.id,
-            )
-            .where(ProtectedApp.owner_user_id == user_id)
-            .where(ProtectedApp.id == protected_app_id)
-            .order_by(SecurityEvent.confidence_pct)
-        )
-
-        res: Result = await self.db_session.execute(stmt)
-
-        rows = res.scalars().all()
 
         return rows
         

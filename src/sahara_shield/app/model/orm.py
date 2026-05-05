@@ -110,18 +110,6 @@ class ProtectedApp(Base):
     __tablename__ = 'protected_apps'
     __table_args__ = (
         UniqueConstraint('owner_user_id', 'name', 'url'),
-        CheckConstraint(
-            'risk_score_severity_score_weight >= 0 AND risk_score_severity_score_weight <= 1',
-            name='risk_score_severity_score_weight_range',
-        ),
-        CheckConstraint(
-            'risk_score_confidence_pct_weight >= 0 AND risk_score_confidence_pct_weight <= 1',
-            name='risk_score_confidence_pct_weight_range',
-        ),
-        CheckConstraint(
-            'ABS(risk_score_severity_score_weight + risk_score_confidence_pct_weight - 1.0) <= 0.000001',
-            name='risk_score_weights_sum',
-        ),
     )
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
@@ -129,8 +117,6 @@ class ProtectedApp(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     url: Mapped[str] = mapped_column(String(255), nullable=False)
     live: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
-    risk_score_severity_score_weight: Mapped[float] = mapped_column(Float(), nullable=False, default=0.5)
-    risk_score_confidence_pct_weight: Mapped[float] = mapped_column(Float(), nullable=False, default=0.5)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
 
@@ -153,23 +139,6 @@ class ProtectedApp(Base):
             raise ValueError(f'Invalid URL: {value}')
 
         return url
-
-    @validates('risk_score_severity_score_weight', 'risk_score_confidence_pct_weight')
-    def validate_risk_score_weight(self, key, value):
-        if value < 0 or value > 1:
-            raise ValueError(f'{key} must be within [0, 1]')
-
-        other_key = (
-            'risk_score_confidence_pct_weight'
-            if key == 'risk_score_severity_score_weight'
-            else 'risk_score_severity_score_weight'
-        )
-        other_value = getattr(self, other_key, None)
-
-        if other_value is not None and abs((value + other_value) - 1.0) > 0.000001:
-            raise ValueError('risk score weights must sum to 1.0')
-
-        return value
     
     @classmethod
     def __declare_last__(cls):
@@ -315,7 +284,6 @@ class SecurityEvent(Base):
 
     __tablename__ = 'security_events'
     __table_args__ = (
-        CheckConstraint('confidence_pct >= 0 AND confidence_pct <= 100', name='confidence_pct_range'),
         CheckConstraint('risk_score >= 0 AND risk_score <= 100', name='risk_score_range'),
     )
 
@@ -323,7 +291,6 @@ class SecurityEvent(Base):
     flagged_request_id: Mapped[int] = mapped_column(ForeignKey('flagged_requests.id'), nullable=False)
     threat_type: Mapped[ThreatTypes] = mapped_column(Enum(ThreatTypes), nullable=False)
     threat_severity: Mapped[ThreatSeverities] = mapped_column(Enum(ThreatSeverities), nullable=False)
-    confidence_pct: Mapped[int] = mapped_column(Integer(), nullable=False)
     risk_score: Mapped[int] = mapped_column(Integer(), nullable=False)
     action: Mapped[SecurityActions] = mapped_column(Enum(SecurityActions), nullable=False)
     reason_desc: Mapped[str] = mapped_column(String(1500), nullable=False, default='No reason given.')

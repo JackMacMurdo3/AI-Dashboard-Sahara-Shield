@@ -157,7 +157,7 @@ function renderPolicyDetail(policy, app) {
     ['Mode', policy.mode],
     ['Status', policy.active ? 'Active' : 'Inactive'],
     ['Priority', policy.priority],
-    ['Min Block Score', policy.min_block_score],
+    ['Action Score Threshold', policy.action_score_threshold],
   ].forEach(([label, value]) => {
     policyDetailFields.appendChild(createFieldRow(label, value));
   });
@@ -234,13 +234,13 @@ function initializeTabs() {
         correspondingPanel.removeAttribute('hidden');
 
         if (tabName === 'policies' && protectedAppId) {
-          // Show the create policy button when policies tab is active
+          // show the create policy button when policies tab is active
           if (createPolicyButton) {
             createPolicyButton.style.display = 'inline-block';
           }
           await loadProtectedAppPolicies(protectedAppId);
         } else {
-          // Hide the create policy button for other tabs
+          // hide the create policy button for other tabs
           if (createPolicyButton) {
             createPolicyButton.style.display = 'none';
           }
@@ -291,51 +291,6 @@ function renderSummaryContainer(title, metrics) {
   return container;
 }
 
-function renderConfidencePctStatsContainer(stats) {
-  const container = document.createElement('div');
-  container.className = 'summary-container';
-
-  const header = document.createElement('h3');
-  header.textContent = 'Confidence Statistics';
-  container.appendChild(header);
-
-  const statsGrid = document.createElement('div');
-  statsGrid.className = 'confidence-stats';
-
-  const meanItem = document.createElement('div');
-  meanItem.className = 'confidence-stat';
-
-  const meanLabel = document.createElement('p');
-  meanLabel.className = 'confidence-label';
-  meanLabel.textContent = 'Mean';
-  meanItem.appendChild(meanLabel);
-
-  const meanValue = document.createElement('p');
-  meanValue.className = 'confidence-value';
-  meanValue.textContent = `${stats.mean.toFixed(2)}%`;
-  meanItem.appendChild(meanValue);
-
-  statsGrid.appendChild(meanItem);
-
-  const medianItem = document.createElement('div');
-  medianItem.className = 'confidence-stat';
-
-  const medianLabel = document.createElement('p');
-  medianLabel.className = 'confidence-label';
-  medianLabel.textContent = 'Median';
-  medianItem.appendChild(medianLabel);
-
-  const medianValue = document.createElement('p');
-  medianValue.className = 'confidence-value';
-  medianValue.textContent = `${stats.median.toFixed(2)}%`;
-  medianItem.appendChild(medianValue);
-
-  statsGrid.appendChild(medianItem);
-  container.appendChild(statsGrid);
-
-  return container;
-}
-
 async function loadSecurityEventsSummary(protectedAppId) {
   const eventsSummaryDiv = document.getElementById('events-summary');
 
@@ -371,13 +326,7 @@ async function loadSecurityEventsSummary(protectedAppId) {
       );
       eventsSummaryDiv.appendChild(typeContainer);
     }
-
-    if (data.confidence_pct_stats) {
-      const confidencePctStatsContainer = renderConfidencePctStatsContainer(
-        data.confidence_pct_stats
-      );
-      eventsSummaryDiv.appendChild(confidencePctStatsContainer);
-    }
+    
   } catch (error) {
     eventsSummaryDiv.innerHTML = '';
     const errorDiv = document.createElement('div');

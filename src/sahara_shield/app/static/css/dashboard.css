@@ -253,32 +253,6 @@ body {
   margin: 0;
 }
 
-.confidence-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-
-.confidence-stat {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 0.75rem;
-}
-
-.confidence-label {
-  font-size: 0.8rem;
-  color: #4b5563;
-  margin: 0 0 0.5rem 0;
-}
-
-.confidence-value {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #0066cc;
-  margin: 0;
-}
-
 .primary-button {
   padding: 0.8rem 0.9rem;
   border-radius: 8px;

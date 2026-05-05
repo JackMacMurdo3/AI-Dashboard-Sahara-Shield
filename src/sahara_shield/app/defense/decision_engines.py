@@ -38,7 +38,7 @@ class PermissiveDecisionEngine(DecisionEngine):
             action=SecurityActions.ALLOW,
             status_code=200,
             reason=f'Allowed!',
-            risk_score=0,
+            aggregated_risk_score=0,
         )
 
 @register_decision_engine(DecisionEngineKeys.RANDOM)
@@ -59,6 +59,6 @@ class RandomDecisionEngine(DecisionEngine):
             action=action,
             status_code=403 if blocked else 200,
             reason=f'Request was {action} actioned due to {findings.threat_severity} severity {findings.threat_type} threat.',
-            risk_score=risk_score,
+            aggregated_risk_score=risk_score,
         )
     

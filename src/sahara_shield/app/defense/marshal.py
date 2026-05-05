@@ -25,8 +25,9 @@ class AnalysisFindings(BaseModel):
     upstream_app_url: str
     threat_type: ThreatTypes
     threat_severity: ThreatSeverities
-    severity_score: int = Field(ge=0, le=100)
     confidence_pct: int = Field(ge=0, le=100)
+    engine_risk_score: int = Field(ge=0, le=100)
+
 
 class SecurityDecision(BaseModel):
     '''
@@ -39,5 +40,5 @@ class SecurityDecision(BaseModel):
     action: SecurityActions
     status_code: int
     reason: str
-    risk_score: int = Field(ge=0, le=100)
+    aggregated_risk_score: int = Field(ge=0, le=100)
     
