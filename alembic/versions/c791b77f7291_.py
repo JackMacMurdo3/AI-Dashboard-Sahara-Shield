@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 25afb901339a
+Revision ID: c791b77f7291
 Revises: 
-Create Date: 2026-05-04 20:45:29.300320
+Create Date: 2026-05-04 22:25:22.315456
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '25afb901339a'
+revision: str = 'c791b77f7291'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -60,7 +60,8 @@ def upgrade() -> None:
     sa.Column('http_method', sa.Enum('GET', 'POST', 'PUT', 'PATCH', 'DELETE', name='httpmethods'), nullable=False),
     sa.Column('route_pattern', sa.String(length=255), nullable=False),
     sa.Column('mode', sa.Enum('MONITOR', 'ENFORCE', name='policymodes'), nullable=False),
-    sa.Column('analysis_engine_key', sa.Enum('OPTIMIST', name='analysisenginekeys'), nullable=False),
+    sa.Column('analysis_engine_key', sa.Enum('OPTIMISTIC', 'RANDOM', name='analysisenginekeys'), nullable=False),
+    sa.Column('aggregation_strategy_key', sa.Enum('MAX', name='aggregationstrategykeys'), nullable=False),
     sa.Column('decision_engine_key', sa.Enum('PERMISSIVE', 'RANDOM', name='decisionenginekeys'), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('active_status_changed_at', sa.DateTime(timezone=True), nullable=False),

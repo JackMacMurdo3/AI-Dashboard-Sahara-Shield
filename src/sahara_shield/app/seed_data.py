@@ -18,7 +18,7 @@ from sahara_shield.app.model.orm import (
     FlaggedRequest, SecurityEvent,
 )
 from sahara_shield.app.core.security import password_sec_measure
-from sahara_shield.app.model.enums import (
+from sahara_shield.app.core.enums import (
     HTTPMethods, PolicyModes, ThreatTypes, 
     ThreatSeverities, SecurityActions, RoutePatternDatatypes,
 )

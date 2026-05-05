@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from sahara_shield.app.model.enums import SecurityActions, ThreatSeverities, ThreatTypes
+from sahara_shield.app.core.enums import SecurityActions, ThreatSeverities, ThreatTypes
 
 class InterceptedRequest(BaseModel):
     '''
@@ -25,9 +25,7 @@ class AnalysisFindings(BaseModel):
     upstream_app_url: str
     threat_type: ThreatTypes
     threat_severity: ThreatSeverities
-    confidence_pct: int = Field(ge=0, le=100)
-    engine_risk_score: int = Field(ge=0, le=100)
-
+    risk_score: int = Field(ge=0, le=100)
 
 class SecurityDecision(BaseModel):
     '''

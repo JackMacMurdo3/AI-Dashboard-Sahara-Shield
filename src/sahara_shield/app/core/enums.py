@@ -34,12 +34,16 @@ class RoutePatternDatatypes(StrEnum):
     STR = enum.auto()
     PATH = enum.auto()
 
+class AggregationStrategyKeys(StrEnum):
+    MAX = enum.auto()
+
 class AnalysisEngineKeys(StrEnum):
     '''
     Identifies which analysis engine to use when processing intercepted HTTP requests like from a reverse proxy.
     '''
 
-    OPTIMIST = enum.auto()
+    OPTIMISTIC = enum.auto()
+    RANDOM = enum.auto()
 
 class DecisionEngineKeys(StrEnum):
     '''

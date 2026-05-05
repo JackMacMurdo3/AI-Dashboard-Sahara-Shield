@@ -17,13 +17,15 @@ from sahara_shield.app.model.marshal import (
     FlaggedRequestSchema, SecurityEventSchema,
 )
 from sahara_shield.app.model.orm import User, AppSecurityPolicy
-from sahara_shield.app.model.enums import (
+from sahara_shield.app.core.enums import (
     ThreatSeverities, ThreatTypes,
     AnalysisEngineKeys,
+    AggregationStrategyKeys,
     DecisionEngineKeys,
     PolicyModes, HTTPMethods,
 )
 from sahara_shield.app.core.config import AppSettings
+from sahara_shield.app.defense.aggregation import AggregationStrategy
 from sahara_shield.app.defense.analysis_engines import AnalysisEngine
 from sahara_shield.app.defense.decision_engines import DecisionEngine
 from sahara_shield.app.defense.marshal import InterceptedRequest, SecurityDecision
@@ -115,6 +117,7 @@ class AppSecurityPolicyController(Controller):
         route_pattern: str,
         name: str | None = None,
         mode: str | None = None,
+        aggregation_strategy_key: str | None = None,
         decision_engine_key: str | None = None,
         active: bool = True,
         priority: int = 100,
@@ -143,6 +146,17 @@ class AppSecurityPolicyController(Controller):
         except Exception:
             raise HTTPException(status_code=400, detail='Invalid mode')
 
+        # convert aggregation strategy keys enum
+        try:
+            aggregation_strategy_key = aggregation_strategy_key.upper() if aggregation_strategy_key is not None else None
+            aggregation_strategy_enum = (
+                aggregation_strategy_key
+                if (aggregation_strategy_key is None or isinstance(aggregation_strategy_key, AggregationStrategyKeys))
+                else AggregationStrategyKeys[aggregation_strategy_key]
+            )
+        except Exception:
+            raise HTTPException(status_code=400, detail='Invalid aggregation_strategy_key')
+
         # convert decision engine keys enum
         try:
             decision_engine_key = decision_engine_key.upper() if decision_engine_key is not None else None
@@ -161,6 +175,7 @@ class AppSecurityPolicyController(Controller):
                 http_method=http_method_enum,
                 route_pattern=route_pattern,
                 mode=mode_enum,
+                aggregation_strategy_key=aggregation_strategy_enum,
                 decision_engine_key=decision_engine_enum,
                 active=active,
                 priority=priority,
@@ -358,6 +373,8 @@ class SecurityDecisionController(Controller):
             default_analysis_engine_key: AnalysisEngineKeys,
             decision_engine_registry: dict[DecisionEngineKeys, DecisionEngine],
             default_decision_engine_key: DecisionEngineKeys,
+            aggregation_strategy_registry: dict[AggregationStrategyKeys, type[AggregationStrategy]],
+            default_aggregation_strategy_key: AggregationStrategyKeys,
             ):
         self.read_protected_apps_service = read_protected_apps_service
         self.read_app_security_policies_service = read_app_security_policies_service
@@ -365,6 +382,8 @@ class SecurityDecisionController(Controller):
         self.default_analysis_engine_key = default_analysis_engine_key
         self.decision_engine_registry = decision_engine_registry
         self.default_decision_engine_key = default_decision_engine_key
+        self.aggregation_strategy_registry = aggregation_strategy_registry
+        self.default_aggregation_strategy_key = default_aggregation_strategy_key
 
     def _resolve_analysis_engine(self, app_security_policy: AppSecurityPolicy | None = None) -> AnalysisEngine:
         '''
@@ -397,6 +416,22 @@ class SecurityDecisionController(Controller):
         
         return default_engine
 
+    def _resolve_aggregation_strategy(self, app_security_policy: AppSecurityPolicy | None = None) -> AggregationStrategy:
+        '''
+        Select the aggregation strategy associated with a matched policy, falling back to the default strategy.
+        '''
+
+        if len(self.aggregation_strategy_registry) == 0:
+            raise HTTPException(status_code=500, detail='Server error: no aggregation strategies registered')
+
+        default_strategy = self.aggregation_strategy_registry[self.default_aggregation_strategy_key]
+
+        aggregation_strategy_key = getattr(app_security_policy, 'aggregation_strategy_key', None)
+        if aggregation_strategy_key is not None:
+            return self.aggregation_strategy_registry.get(aggregation_strategy_key, default_strategy)()
+
+        return default_strategy()
+
     async def get_security_decision(
         self,
         req: InterceptedRequest,
@@ -419,8 +454,12 @@ class SecurityDecisionController(Controller):
         app_security_policy = app_security_policies[0] if app_security_policies else None
 
         analysis_engine: AnalysisEngine = self._resolve_analysis_engine(app_security_policy)() # instantiate analysis engine
-        findings = await analysis_engine.analyze(req, protected_app)
+        findings = [await analysis_engine.analyze(req, protected_app)]
         
+        aggregation_strategy = self._resolve_aggregation_strategy(app_security_policy)
+        decision_engine: DecisionEngine = self._resolve_decision_engine(app_security_policy)(aggregation_strategy=aggregation_strategy)
+        decision = await decision_engine.decide(findings)
+
         # check decision risk score against policy action score threshold
         # if decision risk score is higher and policy in enforce mode
         #   execute action
@@ -431,8 +470,5 @@ class SecurityDecisionController(Controller):
         #   create flagged request
         # if decision risk score is lower
         #   take no action
-        
-        decision_engine: DecisionEngine = self._resolve_decision_engine(app_security_policy)() # instantiate decision engine
-        decision = await decision_engine.decide(findings)
 
         return decision

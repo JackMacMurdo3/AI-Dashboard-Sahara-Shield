@@ -19,10 +19,10 @@ from sqlalchemy import (
     select, func, text, 
     CheckConstraint, UniqueConstraint, 
 )
-from sahara_shield.app.model.enums import (
+from sahara_shield.app.core.enums import (
     UserRoles, HTTPMethods, PolicyModes, 
     ThreatSeverities, SecurityActions, ThreatTypes,
-    DecisionEngineKeys, AnalysisEngineKeys
+    DecisionEngineKeys, AnalysisEngineKeys, AggregationStrategyKeys
 )
 from datetime import datetime, timezone
 from sqlalchemy.inspection import inspect
@@ -209,7 +209,12 @@ class AppSecurityPolicy(Base):
     analysis_engine_key: Mapped[AnalysisEngineKeys] = mapped_column(
         Enum(AnalysisEngineKeys),
         nullable=False,
-        default=AnalysisEngineKeys.OPTIMIST,
+        default=AnalysisEngineKeys.OPTIMISTIC,
+    )
+    aggregation_strategy_key: Mapped[AggregationStrategyKeys] = mapped_column(
+        Enum(AggregationStrategyKeys),
+        nullable=False,
+        default=AggregationStrategyKeys.MAX,
     )
     decision_engine_key: Mapped[DecisionEngineKeys] = mapped_column(
         Enum(DecisionEngineKeys),

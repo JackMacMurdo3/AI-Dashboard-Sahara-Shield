@@ -26,11 +26,15 @@ from sahara_shield.app.defense.analysis_engines import (
     AnalysisEngine,
     analysis_engine_registry,
 )
+from sahara_shield.app.defense.aggregation import (
+    AggregationStrategy,
+    aggregation_strategies_registry,
+)
 from sahara_shield.app.defense.decision_engines import (
     DecisionEngine,
     decision_engine_registry
 )
-from sahara_shield.app.model.enums import AnalysisEngineKeys, DecisionEngineKeys
+from sahara_shield.app.core.enums import AnalysisEngineKeys, AggregationStrategyKeys, DecisionEngineKeys
 
 def get_read_users_service(db_session:AsyncSession=Depends(db_session_mngr)):
     '''
@@ -88,6 +92,20 @@ def get_analysis_engine_registry() -> dict[AnalysisEngineKeys, type[AnalysisEngi
     Dependency injection function that provides the analysis engine registry.
     '''
     return analysis_engine_registry
+
+def get_default_aggregation_strategy_key() -> AggregationStrategyKeys:
+    registered_keys = list(aggregation_strategies_registry.keys())
+
+    if not registered_keys:
+        raise HTTPException(status_code=500, detail='No aggregation strategies registered')
+
+    return registered_keys[0]
+
+def get_aggregation_strategy_registry() -> dict[AggregationStrategyKeys, type[AggregationStrategy]]:
+    '''
+    Dependency injection function that provides the aggregation strategy registry.
+    '''
+    return aggregation_strategies_registry
 
 async def get_current_user(
         session_id:str=Cookie(default=''), 
@@ -181,13 +199,15 @@ def get_auth_controller(
     return AuthController(auth_service, settings)
 
 def get_security_decision_controller(
-        read_protected_apps_service: ReadProtectedAppsService = Depends(get_read_protected_apps_service),
-        read_app_security_policies_service: ReadAppSecurityPoliciesService = Depends(get_read_app_security_policies_service),
-        analysis_engine_registry: dict[AnalysisEngineKeys, type[AnalysisEngine]] = Depends(get_analysis_engine_registry),
-        default_analysis_engine_key: AnalysisEngineKeys = Depends(get_default_analysis_engine_key),
-        decision_engine_registry: dict[DecisionEngineKeys, type[DecisionEngine]] = Depends(get_decision_engine_registry),
-        default_decision_engine_key: DecisionEngineKeys = Depends(get_default_decision_engine_key),
-        ) -> SecurityDecisionController:
+    read_protected_apps_service: ReadProtectedAppsService = Depends(get_read_protected_apps_service),
+    read_app_security_policies_service: ReadAppSecurityPoliciesService = Depends(get_read_app_security_policies_service),
+    analysis_engine_registry: dict[AnalysisEngineKeys, type[AnalysisEngine]] = Depends(get_analysis_engine_registry),
+    default_analysis_engine_key: AnalysisEngineKeys = Depends(get_default_analysis_engine_key),
+    decision_engine_registry: dict[DecisionEngineKeys, type[DecisionEngine]] = Depends(get_decision_engine_registry),
+    default_decision_engine_key: DecisionEngineKeys = Depends(get_default_decision_engine_key),
+    aggregation_strategy_registry: dict[AggregationStrategyKeys, type[AggregationStrategy]] = Depends(get_aggregation_strategy_registry),
+    default_aggregation_strategy_key: AggregationStrategyKeys = Depends(get_default_aggregation_strategy_key),
+    ) -> SecurityDecisionController:
     '''
     Dependency injection function that provides a SecurityDecisionController instance.
     '''
@@ -198,6 +218,8 @@ def get_security_decision_controller(
         default_analysis_engine_key,
         decision_engine_registry,
         default_decision_engine_key,
+        aggregation_strategy_registry,
+        default_aggregation_strategy_key,
     )
 
 # service dependencies for external module use

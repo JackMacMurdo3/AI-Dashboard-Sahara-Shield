@@ -1,8 +1,10 @@
 import random
 from abc import abstractmethod, ABC
-from sahara_shield.app.model.enums import SecurityActions
+from collections.abc import Sequence
+from sahara_shield.app.core.enums import SecurityActions
+from sahara_shield.app.defense.aggregation import AggregationStrategy, MaxAggregationStrategy
 from sahara_shield.app.defense.marshal import AnalysisFindings, SecurityDecision
-from sahara_shield.app.model.enums import DecisionEngineKeys
+from sahara_shield.app.core.enums import DecisionEngineKeys
 
 decision_engine_registry: dict[DecisionEngineKeys, type['DecisionEngine']] = {}
 
@@ -18,47 +20,66 @@ def register_decision_engine(name: DecisionEngineKeys):
             raise ValueError(f'Engine key {decision_engine_key} is already registered')
 
         decision_engine_registry[decision_engine_key] = cls
-        cls.decision_engine_key = decision_engine_key
 
         return cls
 
     return decorator
 
 class DecisionEngine(ABC):
+    def __init__(self, aggregation_strategy: AggregationStrategy | None = None):
+        self.aggregation_strategy = aggregation_strategy or MaxAggregationStrategy()
+
     @abstractmethod
-    async def decide(self, findings: AnalysisFindings) -> SecurityDecision:
+    async def decide(self, findings: Sequence[AnalysisFindings]) -> SecurityDecision:
         pass
 
 @register_decision_engine(DecisionEngineKeys.PERMISSIVE)
 class PermissiveDecisionEngine(DecisionEngine):
-    async def decide(self, findings):
+    async def decide(self, findings: Sequence[AnalysisFindings]) -> SecurityDecision:
+        if len(findings) == 0:
+            raise ValueError('No findings, at least 1 required!')
+
+        first_finding = findings[0]
+        aggregated_risk_score = await self.aggregation_strategy.aggregate(findings)
+
         return SecurityDecision(
-            upstream_app_id=findings.upstream_app_id,
-            upstream_app_url=findings.upstream_app_url,
+            upstream_app_id=first_finding.upstream_app_id,
+            upstream_app_url=first_finding.upstream_app_url,
             action=SecurityActions.ALLOW,
             status_code=200,
             reason=f'Allowed!',
-            aggregated_risk_score=0,
+            aggregated_risk_score=aggregated_risk_score,
         )
 
 @register_decision_engine(DecisionEngineKeys.RANDOM)
 class RandomDecisionEngine(DecisionEngine):
-    def __init__(self, min_risk_score:int=0, max_risk_score:int=100, seed:int|None=None):
-        self.min_risk_score = min_risk_score
-        self.max_risk_score = max_risk_score
+    def __init__(
+        self,
+        seed: int | None = None,
+        aggregation_strategy: AggregationStrategy | None = None,
+    ):
+        super().__init__(aggregation_strategy)
         self.rng = random.Random(seed)
 
-    async def decide(self, findings: AnalysisFindings) -> SecurityDecision:
+    async def decide(self, findings: Sequence[AnalysisFindings]) -> SecurityDecision:
+        if len(findings) == 0:
+            raise ValueError('No findings, at least 1 required!')
+
+        first_finding = findings[0]
+
         action = self.rng.choice(list(SecurityActions))
         blocked = (action == SecurityActions.BLOCK)
-        risk_score = self.rng.randint(self.min_risk_score, self.max_risk_score)
+        risk_score = await self.aggregation_strategy.aggregate(findings)
 
         return SecurityDecision(
-            upstream_app_id=findings.upstream_app_id,
-            upstream_app_url=findings.upstream_app_url,
+            upstream_app_id=first_finding.upstream_app_id,
+            upstream_app_url=first_finding.upstream_app_url,
             action=action,
             status_code=403 if blocked else 200,
-            reason=f'Request was {action} actioned due to {findings.threat_severity} severity {findings.threat_type} threat.',
+            reason=(
+                f'Request was {action} actioned due to '
+                f'{first_finding.threat_severity} severity {first_finding.threat_type} threat.'
+            ),
             aggregated_risk_score=risk_score,
         )
     

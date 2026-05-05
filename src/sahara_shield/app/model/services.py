@@ -11,8 +11,8 @@ from sahara_shield.app.model.orm import (
     AppSecurityPolicy, FlaggedRequest, SecurityEvent,
 )
 from sahara_shield.app.core.security import password_sec_measure
-from sahara_shield.app.model.enums import (
-    HTTPMethods, DecisionEngineKeys, PolicyModes,
+from sahara_shield.app.core.enums import (
+    HTTPMethods, DecisionEngineKeys, PolicyModes, AggregationStrategyKeys,
 )
 
 class Service():
@@ -190,6 +190,7 @@ class CreateAppSecurityPolicyService(Service):
         route_pattern:str,
         name:str|None = None,
         mode:PolicyModes|None=None,
+        aggregation_strategy_key:AggregationStrategyKeys|None=None,
         decision_engine_key:DecisionEngineKeys|None=None,
         active:bool=True,
         priority:int=100,
@@ -202,6 +203,7 @@ class CreateAppSecurityPolicyService(Service):
                 http_method=http_method,
                 route_pattern=route_pattern,
                 mode=mode,
+                aggregation_strategy_key=aggregation_strategy_key,
                 decision_engine_key=decision_engine_key,
                 active=active,
                 priority=priority,
