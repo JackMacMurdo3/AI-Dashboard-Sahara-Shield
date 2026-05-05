@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from sahara_shield.app.defense.marshal import AnalysisFindings
-from sahara_shield.app.core.enums import AggregationStrategyKeys
+from sahara_shield.app.core.enums import AggregationStrategyKeys, ThreatSeverities, ThreatTypes
 
 aggregation_strategies_registry: dict[AggregationStrategyKeys, type['AggregationStrategy']] = {}
 
@@ -24,24 +24,26 @@ def register_aggregation_strategy(name: AggregationStrategyKeys):
 
 class AggregationStrategy(ABC):
 	'''
-	Aggregates one or more analysis findings into a single risk score.
+	Aggregates one or more analysis findings into a single (risk score, threat type, and threat severity) tuple.
 	'''
 
 	@abstractmethod
-	async def aggregate(self, findings: Sequence[AnalysisFindings]) -> int:
-		'''
-		Computes a risk score from validated findings.
-		'''
+	async def aggregate(self, findings: Sequence[AnalysisFindings]) -> tuple[int, ThreatTypes, ThreatSeverities]:
 		pass
 
 @register_aggregation_strategy(AggregationStrategyKeys.MAX)
 class MaxAggregationStrategy(AggregationStrategy):
 	'''
-	Uses the highest engine risk score across all findings.
+	Uses the highest risk score across all findings.
 	'''
 
-	async def aggregate(self, findings: Sequence[AnalysisFindings]) -> int:
+	async def aggregate(self, findings: Sequence[AnalysisFindings]):
 		if len(findings) == 0:
 			raise ValueError('No findings, at least 1 required!')
 
-		return max(finding.risk_score for finding in findings)
+		max_finding: AnalysisFindings|None = None
+		for finding in findings:
+			if max_finding is None or finding.risk_score > max_finding.risk_score:
+				max_finding = finding
+
+		return (max_finding.risk_score, max_finding.threat_type, max_finding.threat_severity)

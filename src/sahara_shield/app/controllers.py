@@ -11,6 +11,7 @@ from sahara_shield.app.model.services import (
     CreateAppSecurityPolicyService,
     ReadAppSecurityPoliciesService, UserAuthService,
     ReadFlaggedRequestsService, ReadSecurityEventsService,
+    CreateFlaggedRequestService, CreateSecurityEventService,
 )
 from sahara_shield.app.model.marshal import (
     ProtectedAppSchema, AppSecurityPolicySchema,
@@ -22,7 +23,7 @@ from sahara_shield.app.core.enums import (
     AnalysisEngineKeys,
     AggregationStrategyKeys,
     DecisionEngineKeys,
-    PolicyModes, HTTPMethods,
+    PolicyModes, HTTPMethods, SecurityActions,
 )
 from sahara_shield.app.core.config import AppSettings
 from sahara_shield.app.defense.aggregation import AggregationStrategy
@@ -369,6 +370,8 @@ class SecurityDecisionController(Controller):
             self,
             read_protected_apps_service:ReadProtectedAppsService,
             read_app_security_policies_service: ReadAppSecurityPoliciesService,
+            create_flagged_request_service: CreateFlaggedRequestService,
+            create_security_event_service: CreateSecurityEventService,
             analysis_engine_registry: dict[AnalysisEngineKeys, type[AnalysisEngine]],
             default_analysis_engine_key: AnalysisEngineKeys,
             decision_engine_registry: dict[DecisionEngineKeys, DecisionEngine],
@@ -378,6 +381,8 @@ class SecurityDecisionController(Controller):
             ):
         self.read_protected_apps_service = read_protected_apps_service
         self.read_app_security_policies_service = read_app_security_policies_service
+        self.create_flagged_request_service = create_flagged_request_service
+        self.create_security_event_service = create_security_event_service
         self.analysis_engine_registry = analysis_engine_registry
         self.default_analysis_engine_key = default_analysis_engine_key
         self.decision_engine_registry = decision_engine_registry
@@ -460,15 +465,58 @@ class SecurityDecisionController(Controller):
         decision_engine: DecisionEngine = self._resolve_decision_engine(app_security_policy)(aggregation_strategy=aggregation_strategy)
         decision = await decision_engine.decide(findings)
 
-        # check decision risk score against policy action score threshold
-        # if decision risk score is higher and policy in enforce mode
-        #   execute action
-        #   create flagged request
-        #   create security event
-        # if decision risk score is higher and policy in monitor mode
-        #   take no action
-        #   create flagged request
-        # if decision risk score is lower
-        #   take no action
+        try:
+            req_http_method = HTTPMethods[req.http_method.upper()]
+        except Exception:
+            raise HTTPException(status_code=400, detail='Invalid http_method')
 
-        return decision
+        action_score_threshold = app_security_policy.action_score_threshold if app_security_policy is not None else 70
+        policy_mode = app_security_policy.mode if app_security_policy is not None else PolicyModes.MONITOR
+        policy_id = app_security_policy.id if app_security_policy is not None else None
+        high_risk = decision.aggregated_risk_score >= action_score_threshold
+
+        print(decision)
+
+        if high_risk:
+            flagged_request = await self.create_flagged_request_service.create(
+                app_security_policy_id=policy_id,
+                http_method=req_http_method,
+                route_path=req.route_path,
+                query_string=req.query_string,
+                headers=req.headers,
+                body=req.body,
+                source_ip=req.source_ip,
+            )
+
+            if policy_mode == PolicyModes.ENFORCE:
+                await self.create_security_event_service.create(
+                    flagged_request_id=flagged_request.id,
+                    threat_type=decision.decided_threat_type,
+                    threat_severity=decision.decided_threat_severity,
+                    risk_score=decision.aggregated_risk_score,
+                    action=decision.action,
+                    reason_desc=decision.reason,
+                )
+                return decision
+
+            return SecurityDecision(
+                upstream_app_id=decision.upstream_app_id,
+                upstream_app_url=decision.upstream_app_url,
+                decided_threat_type=decision.decided_threat_type,
+                decided_threat_severity=decision.decided_threat_severity,
+                action=SecurityActions.ALLOW,
+                status_code=200,
+                reason='High-risk request was monitored; no enforcement action taken.',
+                aggregated_risk_score=decision.aggregated_risk_score,
+            )
+
+        return SecurityDecision(
+            upstream_app_id=decision.upstream_app_id,
+            upstream_app_url=decision.upstream_app_url,
+            decided_threat_type=decision.decided_threat_type,
+            decided_threat_severity=decision.decided_threat_severity,
+            action=SecurityActions.ALLOW,
+            status_code=200,
+            reason='Request risk score did not exceed policy threshold.',
+            aggregated_risk_score=decision.aggregated_risk_score,
+        )

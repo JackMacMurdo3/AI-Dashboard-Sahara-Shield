@@ -35,6 +35,8 @@ class SecurityDecision(BaseModel):
 
     upstream_app_id: int
     upstream_app_url: str
+    decided_threat_type: ThreatTypes
+    decided_threat_severity: ThreatSeverities
     action: SecurityActions
     status_code: int
     reason: str

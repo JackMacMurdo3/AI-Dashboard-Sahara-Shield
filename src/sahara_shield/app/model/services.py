@@ -13,6 +13,7 @@ from sahara_shield.app.model.orm import (
 from sahara_shield.app.core.security import password_sec_measure
 from sahara_shield.app.core.enums import (
     HTTPMethods, DecisionEngineKeys, PolicyModes, AggregationStrategyKeys,
+    ThreatTypes, ThreatSeverities, SecurityActions,
 )
 
 class Service():
@@ -247,6 +248,41 @@ class ReadFlaggedRequestsService(Service):
 
         return rows
 
+class CreateFlaggedRequestService(Service):
+    '''
+    Asynchronously create flagged request records in the database.
+    '''
+
+    async def create(
+        self,
+        http_method: HTTPMethods,
+        route_path: str,
+        app_security_policy_id: int | None = None,
+        query_string: str | None = None,
+        headers: dict | None = None,
+        body: str | None = None,
+        source_ip: str | None = None,
+    ) -> FlaggedRequest:
+        try:
+            flagged_request = FlaggedRequest(
+                app_security_policy_id=app_security_policy_id,
+                http_method=http_method,
+                route_path=route_path,
+                query_string=query_string,
+                headers=headers,
+                body=body,
+                source_ip=source_ip,
+            )
+
+            self.db_session.add(flagged_request)
+            await self.save_changes()
+            await self.refresh(flagged_request)
+
+            return flagged_request
+        except Exception as e:
+            await self.discard_changes()
+            raise Exception(f'Creation failed for flagged request: {e}')
+
 class ReadSecurityEventsService(Service):
     '''
     Asynchronously retrieve security events related to flagged requests for a user's protected apps.
@@ -354,6 +390,39 @@ class ReadSecurityEventsService(Service):
         rows = res.all()
 
         return rows
+    
+class CreateSecurityEventService(Service):
+    '''
+    Asynchronously create security event records in the database.
+    '''
+
+    async def create(
+        self,
+        flagged_request_id: int,
+        threat_type: ThreatTypes,
+        threat_severity: ThreatSeverities,
+        risk_score: int,
+        action: SecurityActions,
+        reason_desc: str,
+    ) -> SecurityEvent:
+        try:
+            security_event = SecurityEvent(
+                flagged_request_id=flagged_request_id,
+                threat_type=threat_type,
+                threat_severity=threat_severity,
+                risk_score=risk_score,
+                action=action,
+                reason_desc=reason_desc,
+            )
+
+            self.db_session.add(security_event)
+            await self.save_changes()
+            await self.refresh(security_event)
+
+            return security_event
+        except Exception as e:
+            await self.discard_changes()
+            raise Exception(f'Creation failed for security event: {e}')
         
 class UserAuthService(Service):
     async def authenticate(self, email:str, password:str):

@@ -209,7 +209,7 @@ class AppSecurityPolicy(Base):
     analysis_engine_key: Mapped[AnalysisEngineKeys] = mapped_column(
         Enum(AnalysisEngineKeys),
         nullable=False,
-        default=AnalysisEngineKeys.OPTIMISTIC,
+        default=AnalysisEngineKeys.RANDOM,
     )
     aggregation_strategy_key: Mapped[AggregationStrategyKeys] = mapped_column(
         Enum(AggregationStrategyKeys),
@@ -271,7 +271,7 @@ class FlaggedRequest(Base):
     __tablename__ = 'flagged_requests'
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
-    app_security_policy_id: Mapped[int] = mapped_column(ForeignKey('app_security_policies.id'), nullable=False)
+    app_security_policy_id: Mapped[int] = mapped_column(ForeignKey('app_security_policies.id'), nullable=True)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
     http_method: Mapped[HTTPMethods] = mapped_column(Enum(HTTPMethods), nullable=False)
     route_path: Mapped[str] = mapped_column(String(255), nullable=False)
