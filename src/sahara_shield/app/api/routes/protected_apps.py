@@ -30,8 +30,6 @@ async def create_protected_app(
     controller: ProtectedAppControllerDep,
     name: str,
     url: str,
-    risk_score_severity_score_weight: float = 0.5,
-    risk_score_confidence_pct_weight: float = 0.5,
     ):
     '''
     Create a new protected app for the current user.
@@ -40,6 +38,4 @@ async def create_protected_app(
         user,
         name,
         url,
-        risk_score_severity_score_weight,
-        risk_score_confidence_pct_weight,
     )
