@@ -475,8 +475,6 @@ class SecurityDecisionController(Controller):
         policy_id = app_security_policy.id if app_security_policy is not None else None
         high_risk = decision.aggregated_risk_score >= action_score_threshold
 
-        print(decision)
-
         if high_risk:
             flagged_request = await self.create_flagged_request_service.create(
                 app_security_policy_id=policy_id,
